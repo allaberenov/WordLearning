@@ -1,0 +1,166 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CardState {
+  NEW
+  LEARNING
+  REVIEW
+  RELEARNING
+  MATURE
+}
+
+enum ReviewRating {
+  AGAIN
+  HARD
+  GOOD
+  EASY
+}
+
+enum ReviewMode {
+  FLASHCARD
+  WRITE
+  MIXED
+}
+
+enum Theme {
+  SYSTEM
+  LIGHT
+  DARK
+}
+
+enum NewCardOrder {
+  CREATED_FIRST
+  RANDOM
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique @db.VarChar(320)
+  passwordHash String
+  name         String?       @db.VarChar(120)
+  timezone     String        @default("UTC") @db.VarChar(80)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  decks        Deck[]
+  reviews      Review[]
+  sessions     Session[]
+  settings     UserSettings?
+
+  @@index([createdAt])
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model UserSettings {
+  id                   String       @id @default(uuid())
+  userId               String       @unique
+  newCardsPerDay       Int          @default(10)
+  maxReviewsPerDay     Int          @default(100)
+  desiredRetention     Float        @default(0.9)
+  reviewMode           ReviewMode   @default(FLASHCARD)
+  theme                Theme        @default(SYSTEM)
+  timezone             String       @default("UTC") @db.VarChar(80)
+  interfaceLanguage    String       @default("ru") @db.VarChar(16)
+  pronunciationEnabled Boolean      @default(true)
+  newCardOrder         NewCardOrder @default(CREATED_FIRST)
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+  user                 User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Deck {
+  id            String    @id @default(uuid())
+  userId        String
+  name          String    @db.VarChar(120)
+  description   String?   @db.VarChar(600)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastStudiedAt DateTime?
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cards         Card[]
+
+  @@index([userId, name])
+  @@index([userId, createdAt])
+  @@index([userId, lastStudiedAt])
+}
+
+model Card {
+  id             String    @id @default(uuid())
+  deckId         String
+  word           String    @db.VarChar(160)
+  normalizedWord String    @db.VarChar(160)
+  meaningIndex   Int       @default(0)
+  partOfSpeech   String    @db.VarChar(60)
+  transcription  String?   @db.VarChar(120)
+  translations   String[]
+  definitionEn   String    @db.VarChar(800)
+  examples       Json
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  dueAt          DateTime  @default(now())
+  lastReviewedAt DateTime?
+  state          CardState @default(NEW)
+  difficulty     Float     @default(0)
+  stability      Float     @default(0)
+  elapsedDays    Int       @default(0)
+  scheduledDays  Int       @default(0)
+  learningSteps  Int       @default(0)
+  reps           Int       @default(0)
+  lapses         Int       @default(0)
+  deck           Deck      @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  reviews        Review[]
+
+  @@unique([deckId, normalizedWord, meaningIndex])
+  @@index([deckId, state])
+  @@index([deckId, dueAt])
+  @@index([normalizedWord])
+}
+
+model Review {
+  id             String       @id @default(uuid())
+  cardId         String
+  userId         String
+  rating         ReviewRating
+  reviewedAt     DateTime     @default(now())
+  previousDueAt  DateTime?
+  nextDueAt      DateTime
+  previousState  CardState
+  nextState      CardState
+  responseTimeMs Int?
+  elapsedDays    Int
+  scheduledDays  Int
+  difficulty     Float
+  stability      Float
+  card           Card         @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, reviewedAt])
+  @@index([cardId, reviewedAt])
+  @@index([nextDueAt])
+}
+
+model GeneratedWordCache {
+  id             String   @id @default(uuid())
+  normalizedWord String   @unique @db.VarChar(160)
+  payload        Json
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([updatedAt])
+}

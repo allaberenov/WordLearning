@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 40 20% 98%;
+  --foreground: 222 31% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 31% 12%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 31% 12%;
+  --primary: 164 72% 27%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 33% 94%;
+  --secondary-foreground: 222 31% 16%;
+  --muted: 210 28% 94%;
+  --muted-foreground: 215 13% 42%;
+  --accent: 220 78% 56%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 72% 50%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 214 22% 86%;
+  --input: 214 22% 86%;
+  --ring: 164 72% 31%;
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: 220 22% 9%;
+  --foreground: 210 26% 94%;
+  --card: 220 18% 13%;
+  --card-foreground: 210 26% 94%;
+  --popover: 220 18% 13%;
+  --popover-foreground: 210 26% 94%;
+  --primary: 164 64% 42%;
+  --primary-foreground: 180 16% 8%;
+  --secondary: 219 16% 20%;
+  --secondary-foreground: 210 26% 94%;
+  --muted: 219 16% 19%;
+  --muted-foreground: 214 13% 68%;
+  --accent: 220 86% 67%;
+  --accent-foreground: 222 31% 10%;
+  --destructive: 0 66% 50%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 219 14% 25%;
+  --input: 219 14% 25%;
+  --ring: 164 64% 42%;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  min-height: 100vh;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+::selection {
+  background: hsl(var(--primary) / 0.18);
+}
+
+.focus-ring {
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+}

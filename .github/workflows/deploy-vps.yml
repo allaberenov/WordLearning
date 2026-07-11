@@ -1,0 +1,103 @@
+name: Deploy VPS
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/vps_key
+          chmod 600 ~/.ssh/vps_key
+          ssh-keyscan -p "$VPS_PORT" "$VPS_HOST" >> ~/.ssh/known_hosts
+
+      - name: Create remote directory
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+          VPS_APP_DIR: ${{ secrets.VPS_APP_DIR }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/vps_key -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" "mkdir -p '$VPS_APP_DIR'"
+
+      - name: Upload project
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+          VPS_APP_DIR: ${{ secrets.VPS_APP_DIR }}
+        run: |
+          set -euo pipefail
+          rsync -az --delete \
+            -e "ssh -i ~/.ssh/vps_key -p $VPS_PORT" \
+            --exclude ".git" \
+            --exclude ".github" \
+            --exclude "node_modules" \
+            --exclude ".next" \
+            --include ".env.production.example" \
+            --exclude ".env" \
+            --exclude ".env.*" \
+            ./ "$VPS_USER@$VPS_HOST:$VPS_APP_DIR/"
+
+      - name: Write production env
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+          VPS_APP_DIR: ${{ secrets.VPS_APP_DIR }}
+          VPS_ENV_PRODUCTION: ${{ secrets.VPS_ENV_PRODUCTION }}
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$VPS_ENV_PRODUCTION" | ssh -i ~/.ssh/vps_key -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" "cat > '$VPS_APP_DIR/.env.production' && chmod 600 '$VPS_APP_DIR/.env.production'"
+
+      - name: Deploy containers
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+          VPS_APP_DIR: ${{ secrets.VPS_APP_DIR }}
+          VPS_ENABLE_CADDY: ${{ vars.VPS_ENABLE_CADDY || 'false' }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/vps_key -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" "cd '$VPS_APP_DIR' && chmod +x scripts/deploy-vps.sh && ENABLE_CADDY='$VPS_ENABLE_CADDY' ./scripts/deploy-vps.sh"
+
+      - name: Health check
+        env:
+          VPS_HEALTHCHECK_URL: ${{ secrets.VPS_HEALTHCHECK_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${VPS_HEALTHCHECK_URL:-}" ]; then
+            echo "VPS_HEALTHCHECK_URL is not set, skipping health check"
+            exit 0
+          fi
+          for i in {1..30}; do
+            if curl -fsS "$VPS_HEALTHCHECK_URL/login" >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Health check failed"
+          exit 1
