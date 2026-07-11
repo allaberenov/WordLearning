@@ -161,21 +161,40 @@ Add these in GitHub:
 Settings -> Secrets and variables -> Actions -> New repository secret
 ```
 
-Required secrets:
+Required repository variables:
 
 ```text
 VPS_HOST
 VPS_USER
-VPS_SSH_KEY
 VPS_APP_DIR
-VPS_ENV_PRODUCTION
+GEMINI_BASE_URL
+GEMINI_MODEL
+GEMINI_TIMEOUT_MS
 ```
 
-Optional secrets:
+Optional repository variables:
 
 ```text
 VPS_PORT
+VPS_ENABLE_CADDY
 VPS_HEALTHCHECK_URL
+DOMAIN
+RUN_MIGRATIONS
+OPENAI_MODEL
+```
+
+Required repository secrets:
+
+```text
+VPS_SSH_KEY
+APP_BIND
+APP_PORT
+AUTH_SECRET
+AI_PROVIDER
+GEMINI_API_KEY
+POSTGRES_DB
+POSTGRES_USER
+POSTGRES_PASSWORD
 ```
 
 `VPS_PORT` defaults to `22`.
@@ -193,24 +212,24 @@ http://1.2.3.4:3000
 https://words.example.com
 ```
 
-`VPS_ENV_PRODUCTION` is the full content of `.env.production`, for example:
+The workflow creates `.env.production` on the VPS from these secrets and variables. The generated file has this shape:
 
 ```env
-APP_BIND=0.0.0.0
-APP_PORT=3000
+APP_BIND=<APP_BIND>
+APP_PORT=<APP_PORT>
 RUN_MIGRATIONS=true
 
-POSTGRES_DB=word_learning
-POSTGRES_USER=word_learning
-POSTGRES_PASSWORD=use-a-long-random-password
+POSTGRES_DB=<POSTGRES_DB>
+POSTGRES_USER=<POSTGRES_USER>
+POSTGRES_PASSWORD=<POSTGRES_PASSWORD>
 
-AUTH_SECRET=output-from-openssl-rand-base64-32
+AUTH_SECRET=<AUTH_SECRET>
 
 AI_PROVIDER=gemini
-GEMINI_API_KEY=your-new-gemini-api-key
-GEMINI_MODEL=gemini-flash-latest
-GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1beta
-GEMINI_TIMEOUT_MS=30000
+GEMINI_API_KEY=<GEMINI_API_KEY>
+GEMINI_MODEL=<GEMINI_MODEL>
+GEMINI_BASE_URL=<GEMINI_BASE_URL>
+GEMINI_TIMEOUT_MS=<GEMINI_TIMEOUT_MS>
 
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-4o-mini
@@ -223,11 +242,23 @@ Settings -> Secrets and variables -> Actions -> Variables
 VPS_ENABLE_CADDY=true
 ```
 
-And include this in `VPS_ENV_PRODUCTION`:
+And add these variables:
 
 ```env
-DOMAIN=your-domain.com
+DOMAIN=dublind.ru
 APP_BIND=127.0.0.1
+```
+
+For `dublind.ru`, create DNS records at your DNS provider:
+
+```text
+Type: A
+Name: @
+Value: 91.198.166.61
+
+Type: A
+Name: www
+Value: 91.198.166.61
 ```
 
 ### SSH Key

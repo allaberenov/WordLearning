@@ -6,6 +6,7 @@ services:
       - app
     environment:
       DOMAIN: ${DOMAIN}
+      WWW_DOMAIN: ${WWW_DOMAIN:-}
     ports:
       - "80:80"
       - "443:443"
