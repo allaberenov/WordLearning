@@ -71,6 +71,11 @@ GEMINI_API_KEY=your-new-gemini-api-key
 GEMINI_MODEL=gemini-flash-latest
 GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1beta
 GEMINI_TIMEOUT_MS=30000
+
+GROQ_API_KEY=
+GROQ_MODEL=qwen/qwen3-32b
+GROQ_BASE_URL=https://api.groq.com/openai/v1
+GROQ_TIMEOUT_MS=20000
 ```
 
 Use a new Gemini key. Do not reuse a key that was pasted into chat or logs.
@@ -178,6 +183,9 @@ VPS_APP_DIR
 GEMINI_BASE_URL
 GEMINI_MODEL
 GEMINI_TIMEOUT_MS
+GROQ_BASE_URL
+GROQ_MODEL
+GROQ_TIMEOUT_MS
 ```
 
 Optional repository variables:
@@ -200,6 +208,7 @@ APP_PORT
 AUTH_SECRET
 AI_PROVIDER
 GEMINI_API_KEY
+GROQ_API_KEY
 POSTGRES_DB
 POSTGRES_USER
 POSTGRES_PASSWORD
@@ -239,6 +248,11 @@ GEMINI_API_KEY=<GEMINI_API_KEY>
 GEMINI_MODEL=<GEMINI_MODEL>
 GEMINI_BASE_URL=<GEMINI_BASE_URL>
 GEMINI_TIMEOUT_MS=<GEMINI_TIMEOUT_MS>
+
+GROQ_API_KEY=<GROQ_API_KEY>
+GROQ_MODEL=qwen/qwen3-32b
+GROQ_BASE_URL=https://api.groq.com/openai/v1
+GROQ_TIMEOUT_MS=20000
 
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-4o-mini
@@ -323,6 +337,11 @@ GEMINI_API_KEY="your-production-gemini-key"
 GEMINI_MODEL="gemini-flash-latest"
 GEMINI_BASE_URL="https://generativelanguage.googleapis.com/v1beta"
 GEMINI_TIMEOUT_MS="30000"
+
+GROQ_API_KEY=""
+GROQ_MODEL="qwen/qwen3-32b"
+GROQ_BASE_URL="https://api.groq.com/openai/v1"
+GROQ_TIMEOUT_MS="20000"
 
 OPENAI_API_KEY=""
 OPENAI_MODEL="gpt-4o-mini"

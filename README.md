@@ -34,6 +34,7 @@ Next.js, React, TypeScript, PostgreSQL, Prisma ORM, Tailwind CSS, shadcn/ui-styl
 - `AI_PROVIDER="ollama"` — локальная Ollama-модель, например `qwen3:4b-instruct`.
 - `AI_PROVIDER="openai"` — OpenAI Responses API с `text.format` и `json_schema`, `strict: true`.
 - `AI_PROVIDER="gemini"` — Google Gemini `generateContent` API с `responseMimeType="application/json"` и `responseSchema`.
+- `AI_PROVIDER="groq"` — Groq OpenAI-compatible Chat Completions, по умолчанию `qwen/qwen3-32b`.
 
 После ответа JSON дополнительно валидируется `generatedCardSchema` через Zod. При некорректном JSON выполняется одна повторная попытка.
 
@@ -53,6 +54,11 @@ GEMINI_TIMEOUT_MS="30000"
 OLLAMA_BASE_URL="http://localhost:11434"
 OLLAMA_MODEL="qwen3:4b-instruct"
 OLLAMA_TIMEOUT_MS="60000"
+
+GROQ_API_KEY=""
+GROQ_MODEL="qwen/qwen3-32b"
+GROQ_BASE_URL="https://api.groq.com/openai/v1"
+GROQ_TIMEOUT_MS="20000"
 
 OPENAI_API_KEY=""
 OPENAI_MODEL="gpt-4o-mini"

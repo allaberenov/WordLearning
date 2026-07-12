@@ -147,6 +147,26 @@ function getGeminiModelPath() {
   return model.startsWith("models/") ? model : `models/${model}`;
 }
 
+function getGroqApiKey() {
+  const apiKey = process.env.GROQ_API_KEY?.trim();
+  if (!apiKey) {
+    throw new ApiError(
+      503,
+      "Groq API не настроен. Добавьте GROQ_API_KEY в переменные окружения.",
+      "GROQ_NOT_CONFIGURED"
+    );
+  }
+  return apiKey;
+}
+
+function getGroqBaseUrl() {
+  return (process.env.GROQ_BASE_URL || "https://api.groq.com/openai/v1").replace(/\/$/, "");
+}
+
+function getGroqModel() {
+  return process.env.GROQ_MODEL || "qwen/qwen3-32b";
+}
+
 const systemPrompt = `
 You create vocabulary cards for Russian-speaking learners of English.
 Return only JSON that matches the provided schema.
@@ -254,6 +274,10 @@ async function requestGeneratedCard(input: string, signal: AbortSignal) {
     return requestGeminiGeneratedCard(input, signal);
   }
 
+  if (getProvider() === "groq") {
+    return requestGroqGeneratedCard(input, signal);
+  }
+
   const client = getClient();
   const response = await client.responses.create(
     {
@@ -282,6 +306,135 @@ async function requestGeneratedCard(input: string, signal: AbortSignal) {
   const outputText = response.output_text;
   if (!outputText) {
     throw new Error("OpenAI returned an empty response.");
+  }
+  return parseGeneratedCard(outputText);
+}
+
+type GroqResponseFormat =
+  | {
+      type: "json_schema";
+      json_schema: {
+        name: string;
+        schema: typeof vocabularyCardJsonSchema;
+        strict: boolean;
+      };
+    }
+  | { type: "json_object" };
+
+async function requestGroqGeneratedCard(input: string, signal: AbortSignal) {
+  try {
+    return await requestGroqGeneratedCardWithFormat(input, signal, {
+      type: "json_schema",
+      json_schema: {
+        name: "vocabulary_card",
+        schema: vocabularyCardJsonSchema,
+        strict: true
+      }
+    });
+  } catch (error) {
+    if (!(error instanceof ApiError) || error.code !== "GROQ_STRUCTURED_OUTPUT_UNSUPPORTED") {
+      throw error;
+    }
+
+    return requestGroqGeneratedCardWithFormat(input, signal, { type: "json_object" });
+  }
+}
+
+async function requestGroqGeneratedCardWithFormat(
+  input: string,
+  signal: AbortSignal,
+  responseFormat: GroqResponseFormat
+) {
+  const groqSystemPrompt = `${systemPrompt}
+
+JSON schema:
+${JSON.stringify(vocabularyCardJsonSchema)}
+
+Return a single valid JSON object only. Do not use Markdown or prose outside JSON.
+Use an empty string for transcription only if pronunciation is genuinely unknown.
+The response must be JSON.
+The "translations" field must contain natural Russian translations only.
+Bad translation examples: "намерзший" for "reluctant", "намного" for "reluctant", adverbs for adjectives, rare literal calques.
+Good translation examples: "неохотный", "не желающий", "склонный", "существенный", "поддерживать".`;
+
+  const response = await fetch(`${getGroqBaseUrl()}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getGroqApiKey()}`
+    },
+    signal,
+    body: JSON.stringify({
+      model: getGroqModel(),
+      messages: [
+        {
+          role: "system",
+          content: groqSystemPrompt
+        },
+        {
+          role: "user",
+          content: `Create a vocabulary card for this English word or expression: ${input}`
+        }
+      ],
+      response_format: responseFormat,
+      reasoning_format: "hidden",
+      temperature: 0.2,
+      max_tokens: 1200
+    })
+  });
+
+  const payload = (await response.json().catch(() => null)) as
+    | {
+        choices?: Array<{
+          message?: { content?: string };
+          finish_reason?: string;
+        }>;
+        error?: { code?: string; type?: string; message?: string };
+      }
+    | null;
+
+  if (!response.ok) {
+    const message = payload?.error?.message || "";
+    const structuredUnsupported =
+      responseFormat.type === "json_schema" &&
+      response.status === 400 &&
+      /json_schema|structured|response_format/i.test(message);
+
+    if (structuredUnsupported) {
+      throw new ApiError(
+        400,
+        "Groq не поддерживает JSON Schema для выбранной модели, пробуем JSON mode.",
+        "GROQ_STRUCTURED_OUTPUT_UNSUPPORTED"
+      );
+    }
+
+    console.error("Groq API error", {
+      status: response.status,
+      code: payload?.error?.code,
+      type: payload?.error?.type,
+      message
+    });
+
+    const userMessage =
+      response.status === 401 || response.status === 403
+        ? "Groq отклонил API-ключ или доступ к модели. Проверьте GROQ_API_KEY и GROQ_MODEL."
+        : response.status === 404
+          ? "Модель Groq не найдена. Проверьте GROQ_MODEL."
+          : response.status === 429
+            ? "Groq ограничил частоту запросов или квоту."
+            : response.status === 400
+              ? "Groq отклонил запрос. Проверьте GROQ_MODEL и формат structured output."
+              : "Groq вернул ошибку API. Подробности смотрите в консоли сервера.";
+
+    throw new ApiError(response.status >= 500 ? 502 : response.status, userMessage, "GROQ_API_ERROR", {
+      status: response.status,
+      type: payload?.error?.type
+    });
+  }
+
+  const outputText = payload?.choices?.[0]?.message?.content?.trim() || "";
+  if (!outputText) {
+    throw new Error("Groq returned an empty response.");
   }
   return parseGeneratedCard(outputText);
 }
@@ -458,7 +611,9 @@ export async function generateVocabularyCard(input: string) {
         ? Number(process.env.OLLAMA_TIMEOUT_MS || 60_000)
         : getProvider() === "gemini"
           ? Number(process.env.GEMINI_TIMEOUT_MS || 30_000)
-          : 20_000;
+          : getProvider() === "groq"
+            ? Number(process.env.GROQ_TIMEOUT_MS || 20_000)
+            : 20_000;
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
       const card = await requestGeneratedCard(input, controller.signal);
