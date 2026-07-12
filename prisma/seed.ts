@@ -1,7 +1,12 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
-import { prisma } from "../src/lib/prisma";
-import { normalizeWord } from "../src/lib/utils";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+function normalizeWord(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
 
 const cards = [
   {
