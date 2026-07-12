@@ -30,6 +30,24 @@ PULL_SERVICES=(postgres)
 if [[ "${ENABLE_CADDY:-false}" == "true" ]]; then
   COMPOSE_FILES+=(-f docker-compose.caddy.yml)
   PULL_SERVICES+=(caddy)
+
+  for port in 80 443; do
+    if docker ps --format '{{.ID}} {{.Names}} {{.Ports}}' | grep -E "0\.0\.0\.0:${port}->|:::${port}->" >/dev/null; then
+      echo "Port ${port} is already used by another Docker container:" >&2
+      docker ps --format 'table {{.Names}}\t{{.Ports}}' | grep -E "0\.0\.0\.0:${port}->|:::${port}->" >&2
+      echo "" >&2
+      echo "Either stop the container that owns port ${port}, or set VPS_ENABLE_CADDY=false and configure your existing reverse proxy to route the domain to the app." >&2
+      exit 1
+    fi
+
+    if command -v ss >/dev/null 2>&1 && ss -ltn "( sport = :${port} )" | tail -n +2 | grep . >/dev/null; then
+      echo "Port ${port} is already used on the host:" >&2
+      ss -ltnp "( sport = :${port} )" >&2 || ss -ltn "( sport = :${port} )" >&2
+      echo "" >&2
+      echo "Stop the host service that owns port ${port}, or set VPS_ENABLE_CADDY=false and configure your existing reverse proxy to route the domain to the app." >&2
+      exit 1
+    fi
+  done
 fi
 
 "${COMPOSE[@]}" "${COMPOSE_FILES[@]}" pull "${PULL_SERVICES[@]}" || true
