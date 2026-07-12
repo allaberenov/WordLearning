@@ -2,25 +2,94 @@ name: Deploy VPS
 
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows:
-      - CI
+  push:
     branches:
       - main
       - master
-    types:
-      - completed
 
 concurrency:
   group: deploy-vps
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
-  deploy:
-    name: Deploy to VPS
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+  test:
+    name: Test
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test
+
+  build_image:
+    name: Build and Push Image
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+      image_tag: ${{ steps.image.outputs.image_tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Compute image tag
+        id: image
+        run: |
+          set -euo pipefail
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          image_tag="${image}:${GITHUB_SHA}"
+          echo "image=${image}" >> "$GITHUB_OUTPUT"
+          echo "image_tag=${image_tag}" >> "$GITHUB_OUTPUT"
+          echo "IMAGE=${image}"
+          echo "IMAGE_TAG=${image_tag}"
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.image.outputs.image_tag }}
+            ${{ steps.image.outputs.image }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy_vps:
+    name: Deploy to VPS
+    needs: build_image
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
@@ -39,7 +108,7 @@ jobs:
           chmod 600 ~/.ssh/vps_key
           ssh-keyscan -p "$VPS_PORT" "$VPS_HOST" >> ~/.ssh/known_hosts
 
-      - name: Create remote directory
+      - name: Create remote directories
         env:
           VPS_HOST: ${{ vars.VPS_HOST }}
           VPS_USER: ${{ vars.VPS_USER }}
@@ -47,33 +116,12 @@ jobs:
           VPS_APP_DIR: ${{ vars.VPS_APP_DIR }}
         run: |
           set -euo pipefail
-          ssh -i ~/.ssh/vps_key -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" "mkdir -p '$VPS_APP_DIR'"
-
-      - name: Upload project
-        env:
-          VPS_HOST: ${{ vars.VPS_HOST }}
-          VPS_USER: ${{ vars.VPS_USER }}
-          VPS_PORT: ${{ vars.VPS_PORT || '22' }}
-          VPS_APP_DIR: ${{ vars.VPS_APP_DIR }}
-        run: |
-          set -euo pipefail
-          rsync -az --delete \
-            -e "ssh -i ~/.ssh/vps_key -p $VPS_PORT" \
-            --exclude ".git" \
-            --exclude ".github" \
-            --exclude "node_modules" \
-            --exclude ".next" \
-            --include ".env.production.example" \
-            --exclude ".env" \
-            --exclude ".env.*" \
-            ./ "$VPS_USER@$VPS_HOST:$VPS_APP_DIR/"
+          ssh -i ~/.ssh/vps_key -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" \
+            "mkdir -p '$VPS_APP_DIR/docker' '$VPS_APP_DIR/scripts'"
 
       - name: Write production env
         env:
-          VPS_HOST: ${{ vars.VPS_HOST }}
-          VPS_USER: ${{ vars.VPS_USER }}
-          VPS_PORT: ${{ vars.VPS_PORT || '22' }}
-          VPS_APP_DIR: ${{ vars.VPS_APP_DIR }}
+          APP_IMAGE: ${{ needs.build_image.outputs.image_tag }}
           APP_BIND: ${{ secrets.APP_BIND }}
           APP_PORT: ${{ secrets.APP_PORT }}
           RUN_MIGRATIONS: ${{ vars.RUN_MIGRATIONS || 'true' }}
@@ -89,9 +137,11 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-4o-mini' }}
           DOMAIN: ${{ vars.DOMAIN }}
+          WWW_DOMAIN: ${{ vars.WWW_DOMAIN }}
         run: |
           set -euo pipefail
           {
+            printf 'APP_IMAGE=%s\n' "$APP_IMAGE"
             printf 'APP_BIND=%s\n' "${APP_BIND:-0.0.0.0}"
             printf 'APP_PORT=%s\n' "${APP_PORT:-3000}"
             printf 'RUN_MIGRATIONS=%s\n' "${RUN_MIGRATIONS:-true}"
@@ -113,9 +163,44 @@ jobs:
             if [ -n "${DOMAIN:-}" ]; then
               printf '\nDOMAIN=%s\n' "$DOMAIN"
             fi
+            if [ -n "${WWW_DOMAIN:-}" ]; then
+              printf 'WWW_DOMAIN=%s\n' "$WWW_DOMAIN"
+            fi
           } > .env.production
-          scp -i ~/.ssh/vps_key -P "$VPS_PORT" .env.production "$VPS_USER@$VPS_HOST:$VPS_APP_DIR/.env.production"
-          ssh -i ~/.ssh/vps_key -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" "chmod 600 '$VPS_APP_DIR/.env.production'"
+
+      - name: Upload deploy files
+        env:
+          VPS_HOST: ${{ vars.VPS_HOST }}
+          VPS_USER: ${{ vars.VPS_USER }}
+          VPS_PORT: ${{ vars.VPS_PORT || '22' }}
+          VPS_APP_DIR: ${{ vars.VPS_APP_DIR }}
+        run: |
+          set -euo pipefail
+          scp -i ~/.ssh/vps_key -P "$VPS_PORT" \
+            docker-compose.prod.yml \
+            docker-compose.caddy.yml \
+            .env.production \
+            "$VPS_USER@$VPS_HOST:$VPS_APP_DIR/"
+          scp -i ~/.ssh/vps_key -P "$VPS_PORT" \
+            docker/Caddyfile \
+            "$VPS_USER@$VPS_HOST:$VPS_APP_DIR/docker/Caddyfile"
+          scp -i ~/.ssh/vps_key -P "$VPS_PORT" \
+            scripts/deploy-vps.sh \
+            "$VPS_USER@$VPS_HOST:$VPS_APP_DIR/scripts/deploy-vps.sh"
+          ssh -i ~/.ssh/vps_key -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" \
+            "chmod 600 '$VPS_APP_DIR/.env.production' && chmod +x '$VPS_APP_DIR/scripts/deploy-vps.sh'"
+
+      - name: Login to GHCR on VPS
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+          GHCR_USER: ${{ github.actor }}
+          VPS_HOST: ${{ vars.VPS_HOST }}
+          VPS_USER: ${{ vars.VPS_USER }}
+          VPS_PORT: ${{ vars.VPS_PORT || '22' }}
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$GHCR_TOKEN" | ssh -i ~/.ssh/vps_key -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" \
+            "docker login ghcr.io -u '$GHCR_USER' --password-stdin"
 
       - name: Deploy containers
         env:
@@ -126,7 +211,19 @@ jobs:
           VPS_ENABLE_CADDY: ${{ vars.VPS_ENABLE_CADDY || 'false' }}
         run: |
           set -euo pipefail
-          ssh -i ~/.ssh/vps_key -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" "cd '$VPS_APP_DIR' && chmod +x scripts/deploy-vps.sh && ENABLE_CADDY='$VPS_ENABLE_CADDY' ./scripts/deploy-vps.sh"
+          ssh -i ~/.ssh/vps_key -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" \
+            "cd '$VPS_APP_DIR' && ENABLE_CADDY='$VPS_ENABLE_CADDY' ./scripts/deploy-vps.sh"
+
+      - name: Logout from GHCR on VPS
+        if: always()
+        env:
+          VPS_HOST: ${{ vars.VPS_HOST }}
+          VPS_USER: ${{ vars.VPS_USER }}
+          VPS_PORT: ${{ vars.VPS_PORT || '22' }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/vps_key -p "$VPS_PORT" "$VPS_USER@$VPS_HOST" \
+            "docker logout ghcr.io || true" || true
 
       - name: Health check
         env:

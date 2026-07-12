@@ -51,7 +51,8 @@ coverage/
 ### Env ###
 .env
 .env*.local
-!.env.example
 .vercel
 .env*
+!.env.example
+!.env.production.example
 .idea/*

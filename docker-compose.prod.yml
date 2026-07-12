@@ -15,9 +15,7 @@ services:
       retries: 10
 
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ${APP_IMAGE}
     restart: unless-stopped
     depends_on:
       postgres:

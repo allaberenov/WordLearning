@@ -15,6 +15,11 @@ set +a
 
 export ENV_FILE=.env.production
 
+if [[ -z "${APP_IMAGE:-}" ]]; then
+  echo "APP_IMAGE is not set in .env.production" >&2
+  exit 1
+fi
+
 COMPOSE_LEGACY=false
 
 if docker compose version >/dev/null 2>&1; then
@@ -28,7 +33,7 @@ else
 fi
 
 COMPOSE_FILES=(-f docker-compose.prod.yml)
-PULL_SERVICES=(postgres)
+PULL_SERVICES=(postgres app)
 
 if [[ "${ENABLE_CADDY:-false}" == "true" ]]; then
   COMPOSE_FILES+=(-f docker-compose.caddy.yml)
@@ -53,7 +58,7 @@ if [[ "${ENABLE_CADDY:-false}" == "true" ]]; then
   done
 fi
 
-"${COMPOSE[@]}" "${COMPOSE_FILES[@]}" pull "${PULL_SERVICES[@]}" || true
+"${COMPOSE[@]}" "${COMPOSE_FILES[@]}" pull "${PULL_SERVICES[@]}"
 
 if [[ "${COMPOSE_LEGACY}" == "true" ]]; then
   echo "Legacy docker-compose detected; removing recreate-prone app containers before up."
@@ -64,6 +69,6 @@ if [[ "${COMPOSE_LEGACY}" == "true" ]]; then
   "${COMPOSE[@]}" "${COMPOSE_FILES[@]}" rm -sf "${LEGACY_RM_SERVICES[@]}" || true
 fi
 
-"${COMPOSE[@]}" "${COMPOSE_FILES[@]}" up -d --build --remove-orphans
+"${COMPOSE[@]}" "${COMPOSE_FILES[@]}" up -d --remove-orphans
 "${COMPOSE[@]}" "${COMPOSE_FILES[@]}" ps
 docker image prune -f

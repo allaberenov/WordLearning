@@ -119,7 +119,8 @@ npm run build
 
 ```bash
 cp .env.production.example .env.production
-docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+docker compose --env-file .env.production -f docker-compose.prod.yml pull
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d
 ```
 
 Для Vercel:

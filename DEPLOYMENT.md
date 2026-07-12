@@ -4,8 +4,8 @@
 
 This repository includes a production Docker setup:
 
-- `Dockerfile` builds the Next.js app.
-- `docker-compose.prod.yml` runs the app and PostgreSQL.
+- `Dockerfile` builds the Next.js app image in GitHub Actions.
+- `docker-compose.prod.yml` runs the published app image and PostgreSQL.
 - `docker/entrypoint.sh` runs `prisma migrate deploy` before starting the app.
 - `docker-compose.caddy.yml` optionally adds HTTPS via Caddy.
 
@@ -30,20 +30,17 @@ sudo usermod -aG docker "$USER"
 
 Log out and back in after adding the user to the `docker` group.
 
-### 2. Copy Project To VPS
+### 2. Prepare App Directory
 
-From your local machine:
+GitHub Actions uploads only deployment files to the VPS:
 
-```bash
-rsync -az --delete \
-  --exclude node_modules \
-  --exclude .next \
-  --exclude .env \
-  --exclude .env.local \
-  ./ user@your-vps-ip:/opt/word_learning/
-```
+- `docker-compose.prod.yml`
+- `docker-compose.caddy.yml`
+- `docker/Caddyfile`
+- `scripts/deploy-vps.sh`
+- `.env.production`
 
-Or clone/pull the repository on the VPS.
+The application source is not built on the VPS.
 
 ### 3. Create Production Env
 
@@ -58,6 +55,7 @@ openssl rand -base64 32
 Edit `.env.production`:
 
 ```env
+APP_IMAGE=ghcr.io/your-owner/your-repo:latest
 APP_BIND=0.0.0.0
 APP_PORT=3000
 RUN_MIGRATIONS=true
@@ -80,7 +78,8 @@ Use a new Gemini key. Do not reuse a key that was pasted into chat or logs.
 ### 4. Start
 
 ```bash
-docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+docker compose --env-file .env.production -f docker-compose.prod.yml pull
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d
 ```
 
 Check logs:
@@ -112,7 +111,12 @@ Run:
 docker compose --env-file .env.production \
   -f docker-compose.prod.yml \
   -f docker-compose.caddy.yml \
-  up -d --build
+  pull
+
+docker compose --env-file .env.production \
+  -f docker-compose.prod.yml \
+  -f docker-compose.caddy.yml \
+  up -d
 ```
 
 The app will be available at:
@@ -123,10 +127,11 @@ https://your-domain.com
 
 ### 6. Update Deploy
 
-Copy or pull the latest code, then:
+Set `APP_IMAGE` to the new image tag, then:
 
 ```bash
-docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+docker compose --env-file .env.production -f docker-compose.prod.yml pull app
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d app
 ```
 
 ### 7. Optional Seed
@@ -150,8 +155,11 @@ For public production, avoid keeping the demo user with this password.
 
 The repository includes two workflows:
 
-- `.github/workflows/ci.yml` runs typecheck, tests, production build, and Docker build.
-- `.github/workflows/deploy-vps.yml` deploys to a VPS by SSH and Docker Compose.
+- `.github/workflows/ci.yml` runs PR checks.
+- `.github/workflows/deploy-vps.yml` runs the production pipeline on push/manual trigger:
+  1. `test` runs typecheck and unit tests.
+  2. `build_image` builds the Docker image and pushes it to GitHub Container Registry.
+  3. `deploy_vps` logs into GHCR on the VPS, pulls the published image, and runs Docker Compose.
 
 ### Required GitHub Secrets
 
@@ -215,6 +223,7 @@ https://words.example.com
 The workflow creates `.env.production` on the VPS from these secrets and variables. The generated file has this shape:
 
 ```env
+APP_IMAGE=ghcr.io/allaberenov/wordlearning:<commit-sha>
 APP_BIND=<APP_BIND>
 APP_PORT=<APP_PORT>
 RUN_MIGRATIONS=true
