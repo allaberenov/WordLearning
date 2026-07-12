@@ -15,10 +15,13 @@ set +a
 
 export ENV_FILE=.env.production
 
+COMPOSE_LEGACY=false
+
 if docker compose version >/dev/null 2>&1; then
   COMPOSE=(docker compose)
 elif command -v docker-compose >/dev/null 2>&1; then
   COMPOSE=(docker-compose)
+  COMPOSE_LEGACY=true
 else
   echo "Docker Compose is not installed. Install Docker Compose plugin or docker-compose." >&2
   exit 1
@@ -51,6 +54,16 @@ if [[ "${ENABLE_CADDY:-false}" == "true" ]]; then
 fi
 
 "${COMPOSE[@]}" "${COMPOSE_FILES[@]}" pull "${PULL_SERVICES[@]}" || true
+
+if [[ "${COMPOSE_LEGACY}" == "true" ]]; then
+  echo "Legacy docker-compose detected; removing recreate-prone app containers before up."
+  LEGACY_RM_SERVICES=(app)
+  if [[ "${ENABLE_CADDY:-false}" == "true" ]]; then
+    LEGACY_RM_SERVICES+=(caddy)
+  fi
+  "${COMPOSE[@]}" "${COMPOSE_FILES[@]}" rm -sf "${LEGACY_RM_SERVICES[@]}" || true
+fi
+
 "${COMPOSE[@]}" "${COMPOSE_FILES[@]}" up -d --build --remove-orphans
 "${COMPOSE[@]}" "${COMPOSE_FILES[@]}" ps
 docker image prune -f
