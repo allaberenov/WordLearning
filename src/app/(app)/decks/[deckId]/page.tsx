@@ -129,10 +129,6 @@ export default async function DeckPage({
       <CardTable
         cards={cards}
         decks={decks}
-        page={data.page}
-        totalPages={data.totalPages}
-        basePath={`/decks/${data.deck.id}`}
-        searchParamsString={urlParams.toString()}
       />
     </div>
   );

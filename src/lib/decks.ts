@@ -2,7 +2,6 @@ import { Prisma } from "@prisma/client";
 import { ApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { endOfDayInTimeZone } from "@/lib/date";
-import { safeInt } from "@/lib/utils";
 
 export type DeckSort = "name" | "createdAt" | "lastActivity";
 
@@ -79,8 +78,6 @@ export async function getDeckPageData(
   const deck = await assertDeckOwner(userId, deckId);
   const query = searchParams.get("q")?.trim() ?? "";
   const state = searchParams.get("state")?.trim() ?? "all";
-  const page = safeInt(searchParams.get("page"), 1, 1, 10_000);
-  const pageSize = 15;
 
   const where: Prisma.CardWhereInput = {
     deckId,
@@ -101,9 +98,7 @@ export async function getDeckPageData(
   const [cards, totalCards, stateGroups, overdueCount, dueTodayCount] = await Promise.all([
     prisma.card.findMany({
       where,
-      orderBy: [{ dueAt: "asc" }, { createdAt: "desc" }],
-      skip: (page - 1) * pageSize,
-      take: pageSize
+      orderBy: [{ dueAt: "asc" }, { createdAt: "desc" }]
     }),
     prisma.card.count({ where }),
     prisma.card.groupBy({
@@ -134,9 +129,6 @@ export async function getDeckPageData(
     deck,
     cards,
     totalCards,
-    page,
-    pageSize,
-    totalPages: Math.max(1, Math.ceil(totalCards / pageSize)),
     stateCounts,
     overdueCount,
     dueTodayCount

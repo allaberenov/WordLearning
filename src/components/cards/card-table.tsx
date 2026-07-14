@@ -1,7 +1,5 @@
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CardActions } from "@/components/cards/card-actions";
 import { formatDateRu } from "@/lib/date";
@@ -30,18 +28,10 @@ function stateVariant(state: string) {
 
 export function CardTable({
   cards,
-  decks,
-  page,
-  totalPages,
-  basePath,
-  searchParamsString
+  decks
 }: {
   cards: CardRow[];
   decks: DeckOption[];
-  page: number;
-  totalPages: number;
-  basePath: string;
-  searchParamsString?: string;
 }) {
   if (cards.length === 0) {
     return (
@@ -51,15 +41,6 @@ export function CardTable({
       </div>
     );
   }
-
-  function pageHref(nextPage: number) {
-    const params = new URLSearchParams(searchParamsString || "");
-    params.set("page", String(nextPage));
-    return `${basePath}?${params.toString()}`;
-  }
-
-  const previousHref = pageHref(Math.max(1, page - 1));
-  const nextHref = pageHref(Math.min(totalPages, page + 1));
 
   return (
     <div className="space-y-4">
@@ -101,25 +82,6 @@ export function CardTable({
             ))}
           </TableBody>
         </Table>
-      </div>
-      <div className="flex items-center justify-between">
-        <div className="text-sm text-muted-foreground">
-          Страница {page} из {totalPages}
-        </div>
-        <div className="flex gap-2">
-          <Button asChild variant="outline" size="sm" aria-disabled={page <= 1}>
-            <Link href={previousHref}>
-              <ChevronLeft className="h-4 w-4" />
-              Назад
-            </Link>
-          </Button>
-          <Button asChild variant="outline" size="sm" aria-disabled={page >= totalPages}>
-            <Link href={nextHref}>
-              Далее
-              <ChevronRight className="h-4 w-4" />
-            </Link>
-          </Button>
-        </div>
       </div>
     </div>
   );
