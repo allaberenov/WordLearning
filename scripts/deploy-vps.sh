@@ -20,6 +20,20 @@ if [[ -z "${APP_IMAGE:-}" ]]; then
   exit 1
 fi
 
+echo "Disk usage before Docker cleanup:"
+df -h /
+docker system df || true
+
+echo "Pruning unused Docker objects before pulling the new image..."
+docker container prune -f || true
+docker image prune -af || true
+docker builder prune -af || true
+docker system prune -af || true
+
+echo "Disk usage after Docker cleanup:"
+df -h /
+docker system df || true
+
 COMPOSE_LEGACY=false
 
 if docker compose version >/dev/null 2>&1; then
