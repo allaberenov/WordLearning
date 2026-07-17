@@ -182,6 +182,8 @@ Rules:
 - Russian translations must fit the concrete meaning and avoid rare, archaic wording.
 - Russian translations must match the part of speech: adjectives as adjectives, verbs as infinitives, nouns as nouns.
 - Avoid unnatural Russian participles or adverbs when a common dictionary equivalent exists.
+- For idioms and fixed expressions, translate the idiomatic meaning, never the literal words.
+- For "fall off the wagon", use meanings like "сорваться" or "вернуться к вредной привычке"; never use a literal phrase like "свалиться с колеса".
 `.trim();
 
 export function parseGeneratedCard(raw: string): GeneratedCardInput {
@@ -355,7 +357,8 @@ Use an empty string for transcription only if pronunciation is genuinely unknown
 The response must be JSON.
 The "translations" field must contain natural Russian translations only.
 Bad translation examples: "намерзший" for "reluctant", "намного" for "reluctant", adverbs for adjectives, rare literal calques.
-Good translation examples: "неохотный", "не желающий", "склонный", "существенный", "поддерживать".`;
+Bad idiom translation examples: "свалиться с колеса" for "fall off the wagon".
+Good translation examples: "неохотный", "не желающий", "склонный", "существенный", "поддерживать", "сорваться", "вернуться к вредной привычке".`;
 
   const response = await fetch(`${getGroqBaseUrl()}/chat/completions`, {
     method: "POST",
@@ -389,7 +392,8 @@ Good translation examples: "неохотный", "не желающий", "ск�
           message?: { content?: string };
           finish_reason?: string;
         }>;
-        error?: { code?: string; type?: string; message?: string };
+        error?: { code?: string; type?: string; message?: string; failed_generation?: string };
+        failed_generation?: string;
       }
     | null;
 
@@ -412,8 +416,13 @@ Good translation examples: "неохотный", "не желающий", "ск�
       status: response.status,
       code: payload?.error?.code,
       type: payload?.error?.type,
-      message
+      message,
+      failedGeneration: (payload?.error?.failed_generation || payload?.failed_generation)?.slice(0, 1000)
     });
+
+    if (response.status === 400 && payload?.error?.code === "json_validate_failed") {
+      throw new SyntaxError(`Groq returned invalid JSON: ${message}`);
+    }
 
     const userMessage =
       response.status === 401 || response.status === 403
