@@ -1,10 +1,9 @@
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CardActions } from "@/components/cards/card-actions";
 import { FlipRevealCard } from "@/components/cards/flip-reveal-card";
+import { StatusBadge } from "@/components/cards/status-badge";
 import { formatDateRu } from "@/lib/date";
-import { cardStateLabels } from "@/lib/labels";
 import type { GeneratedCardInput } from "@/lib/schemas";
 
 type CardRow = GeneratedCardInput & {
@@ -18,14 +17,6 @@ type DeckOption = {
   id: string;
   name: string;
 };
-
-function stateVariant(state: string) {
-  if (state === "MATURE") return "success" as const;
-  if (state === "NEW") return "info" as const;
-  if (state === "RELEARNING") return "danger" as const;
-  if (state === "LEARNING") return "warning" as const;
-  return "default" as const;
-}
 
 export function CardTable({
   cards,
@@ -45,7 +36,51 @@ export function CardTable({
 
   return (
     <div className="space-y-4">
-      <div className="overflow-x-auto rounded-lg border bg-card">
+      <div className="grid gap-3 md:hidden">
+        {cards.map((card) => (
+          <div key={card.id} className="rounded-lg border border-border bg-card p-4 shadow-soft">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <Link href={`/cards/${card.id}`} className="break-words font-semibold hover:text-primary">
+                  {card.word}
+                </Link>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {card.transcription || "без транскрипции"} · {card.partOfSpeech}
+                </div>
+              </div>
+              <CardActions card={card} decks={decks} />
+            </div>
+            <div className="mt-3">
+              <FlipRevealCard
+                front={
+                  <span>
+                    Показать перевод
+                    <span className="mt-1 block text-xs text-muted-foreground">Кликните, чтобы раскрыть значение</span>
+                  </span>
+                }
+                back={<span>{card.translations.join(", ")}</span>}
+                frontLabel="Значение"
+                backLabel="Перевод"
+                compact
+              />
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <div className="text-xs text-muted-foreground">Статус</div>
+                <div className="mt-1">
+                  <StatusBadge state={card.state} />
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Следующее</div>
+                <div className="mt-1 font-medium">{formatDateRu(card.dueAt)}</div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="hidden overflow-hidden rounded-lg border border-border bg-card shadow-soft md:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -70,15 +105,20 @@ export function CardTable({
                 </TableCell>
                 <TableCell className="max-w-[260px]">
                   <FlipRevealCard
-                    front={<span className="text-muted-foreground">•••</span>}
+                    front={
+                      <span>
+                        Показать перевод
+                        <span className="mt-1 block text-xs text-muted-foreground">Клик для значения</span>
+                      </span>
+                    }
                     back={<span className="line-clamp-2">{card.translations.join(", ")}</span>}
-                    frontLabel="RU"
+                    frontLabel="Значение"
                     backLabel="Перевод"
                     compact
                   />
                 </TableCell>
                 <TableCell>
-                  <Badge variant={stateVariant(card.state)}>{cardStateLabels[card.state] || card.state}</Badge>
+                  <StatusBadge state={card.state} />
                 </TableCell>
                 <TableCell>{formatDateRu(card.dueAt)}</TableCell>
                 <TableCell>{formatDateRu(card.createdAt)}</TableCell>

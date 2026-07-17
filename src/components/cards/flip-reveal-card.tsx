@@ -35,19 +35,19 @@ export function FlipRevealCard({
     >
       <span
         className={cn(
-          "relative block h-full min-h-[inherit] rounded-lg transition-transform duration-300 [transform-style:preserve-3d]",
+          "relative block h-full min-h-[inherit] rounded-lg transition-transform duration-200 [transform-style:preserve-3d]",
           flipped && "[transform:rotateY(180deg)]"
         )}
       >
-        <span className="absolute inset-0 flex min-h-[inherit] flex-col justify-between rounded-lg border bg-card p-4 shadow-soft [backface-visibility:hidden]">
-          <span className="flex items-center justify-between gap-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        <span className="absolute inset-0 flex min-h-[inherit] flex-col justify-between rounded-lg border border-border bg-surface-elevated p-4 shadow-soft transition-colors group-hover:border-border-strong [backface-visibility:hidden]">
+          <span className="flex items-center justify-between gap-3 text-[11px] font-semibold uppercase tracking-normal text-muted-foreground">
             {frontLabel}
             <RotateCcw className="h-3.5 w-3.5 opacity-60 transition-transform group-hover:rotate-12" />
           </span>
           <span className={cn("block text-foreground", compact ? "mt-2 text-sm" : "mt-5 text-lg")}>{front}</span>
         </span>
-        <span className="absolute inset-0 flex min-h-[inherit] flex-col justify-between rounded-lg border border-primary/25 bg-primary/10 p-4 shadow-soft [backface-visibility:hidden] [transform:rotateY(180deg)]">
-          <span className="flex items-center justify-between gap-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
+        <span className="absolute inset-0 flex min-h-[inherit] flex-col justify-between rounded-lg border border-primary/30 bg-primary/10 p-4 shadow-soft [backface-visibility:hidden] [transform:rotateY(180deg)]">
+          <span className="flex items-center justify-between gap-3 text-[11px] font-semibold uppercase tracking-normal text-primary">
             {backLabel}
             <RotateCcw className="h-3.5 w-3.5 opacity-70 transition-transform group-hover:-rotate-12" />
           </span>

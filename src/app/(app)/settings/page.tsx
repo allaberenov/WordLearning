@@ -9,7 +9,7 @@ export default async function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Настройки</h1>
+        <h1 className="text-3xl font-semibold">Настройки</h1>
         <p className="mt-1 text-sm text-muted-foreground">Лимиты, FSRS, режим проверки и внешний вид.</p>
       </div>
       <SettingsForm

@@ -18,7 +18,7 @@ export function StatsDeckSelect({ decks }: { decks: { id: string; name: string }
     <select
       value={selected}
       onChange={(event) => change(event.target.value)}
-      className="focus-ring h-10 rounded-md border bg-background px-3 text-sm"
+      className="focus-ring h-10 rounded-md border border-input bg-background-secondary px-3 text-sm text-foreground hover:border-border-strong"
     >
       <option value="all">Все наборы</option>
       {decks.map((deck) => (

@@ -30,6 +30,13 @@ type ReviewCard = {
 
 const ratingOrder: Preview["rating"][] = ["AGAIN", "HARD", "GOOD", "EASY"];
 
+const ratingStyles: Record<Preview["rating"], string> = {
+  AGAIN: "",
+  HARD: "border-warning/40 bg-warning/10 text-warning hover:bg-warning/20",
+  GOOD: "border-blue/40 bg-blue-soft text-blue hover:bg-blue-soft",
+  EASY: "border-success/40 bg-success/10 text-success hover:bg-success/20"
+};
+
 export function ReviewClient({
   deckId,
   reviewMode,
@@ -191,12 +198,12 @@ export function ReviewClient({
     <div className="mx-auto max-w-4xl space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Повторение</h1>
+          <h1 className="text-3xl font-semibold">Повторение</h1>
         </div>
         <Badge>{cardMode === "WRITE" ? "Написать ответ" : "Карточка"}</Badge>
       </div>
 
-      <Card>
+      <Card className="border-border-strong">
         <CardContent className="p-6 sm:p-8">
           {!revealed && cardMode === "WRITE" ? (
             <form className="mx-auto max-w-xl space-y-5 text-center" onSubmit={checkAnswer}>
@@ -245,7 +252,7 @@ export function ReviewClient({
           {revealed ? (
             <div className="mt-8 space-y-5">
               {answerResult ? (
-                <div className="rounded-md border bg-secondary p-3 text-sm">
+                <div className="rounded-md border border-border bg-surface-elevated p-3 text-sm">
                   {answerResult === "correct" ? "Ответ верный." : null}
                   {answerResult === "typo" ? "Похоже на опечатку, правильный ответ ниже." : null}
                   {answerResult === "wrong" ? "Ответ не совпал, правильный ответ ниже." : null}
@@ -288,8 +295,8 @@ export function ReviewClient({
                   <Button
                     key={rating}
                     type="button"
-                    variant={rating === "AGAIN" ? "destructive" : rating === "EASY" ? "accent" : "outline"}
-                    className="h-auto flex-col py-3"
+                    variant={rating === "AGAIN" ? "danger" : "outline"}
+                    className={`h-auto flex-col py-3 ${ratingStyles[rating]}`}
                     disabled={submitting}
                     onClick={() => submitRating(rating)}
                   >

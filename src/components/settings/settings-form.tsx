@@ -103,7 +103,7 @@ export function SettingsForm({ settings }: { settings: Settings }) {
               id="reviewMode"
               value={draft.reviewMode}
               onChange={(event) => update("reviewMode", event.target.value as Settings["reviewMode"])}
-              className="focus-ring h-10 w-full rounded-md border bg-background px-3 text-sm"
+              className="focus-ring h-10 w-full rounded-md border border-input bg-background-secondary px-3 text-sm text-foreground hover:border-border-strong"
             >
               <option value="FLASHCARD">Карточки</option>
               <option value="WRITE">Написать ответ</option>
@@ -116,18 +116,18 @@ export function SettingsForm({ settings }: { settings: Settings }) {
               id="newCardOrder"
               value={draft.newCardOrder}
               onChange={(event) => update("newCardOrder", event.target.value as Settings["newCardOrder"])}
-              className="focus-ring h-10 w-full rounded-md border bg-background px-3 text-sm"
+              className="focus-ring h-10 w-full rounded-md border border-input bg-background-secondary px-3 text-sm text-foreground hover:border-border-strong"
             >
               <option value="CREATED_FIRST">Сначала старые</option>
               <option value="RANDOM">Случайно</option>
             </select>
           </div>
-          <label className="flex items-center gap-3 rounded-md border p-3">
+          <label className="focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background flex min-h-11 items-center gap-3 rounded-md border border-border bg-background-secondary p-3">
             <input
               type="checkbox"
               checked={draft.pronunciationEnabled}
               onChange={(event) => update("pronunciationEnabled", event.target.checked)}
-              className="h-4 w-4"
+              className="h-4 w-4 accent-primary"
             />
             <span className="text-sm font-medium">Включить произношение</span>
           </label>
@@ -145,7 +145,7 @@ export function SettingsForm({ settings }: { settings: Settings }) {
               id="theme"
               value={draft.theme}
               onChange={(event) => update("theme", event.target.value as Settings["theme"])}
-              className="focus-ring h-10 w-full rounded-md border bg-background px-3 text-sm"
+              className="focus-ring h-10 w-full rounded-md border border-input bg-background-secondary px-3 text-sm text-foreground hover:border-border-strong"
             >
               <option value="SYSTEM">Системная</option>
               <option value="LIGHT">Светлая</option>
@@ -167,7 +167,7 @@ export function SettingsForm({ settings }: { settings: Settings }) {
               id="interfaceLanguage"
               value={draft.interfaceLanguage}
               onChange={(event) => update("interfaceLanguage", event.target.value)}
-              className="focus-ring h-10 w-full rounded-md border bg-background px-3 text-sm"
+              className="focus-ring h-10 w-full rounded-md border border-input bg-background-secondary px-3 text-sm text-foreground hover:border-border-strong"
             >
               <option value="ru">Русский</option>
             </select>

@@ -59,10 +59,10 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   }
 
   return (
-    <Card className="w-full max-w-md">
+    <Card className="w-full max-w-md border-border-strong bg-card">
       <CardHeader className="items-center text-center">
-        <BrandLogo subtitle="English that sticks" centered />
-        <CardTitle>{mode === "login" ? "Вход" : "Регистрация"}</CardTitle>
+        <BrandLogo centered priority />
+        <CardTitle className="text-2xl">{mode === "login" ? "Вход" : "Регистрация"}</CardTitle>
         <CardDescription>
           {mode === "login"
             ? "Войдите, чтобы продолжить повторения."
@@ -96,15 +96,16 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
               />
               <button
                 type="button"
-                className="focus-ring absolute right-1 top-1 rounded-md p-2 text-muted-foreground"
+                className="focus-ring absolute right-1 top-1 rounded-md p-2 text-muted-foreground hover:bg-surface-hover hover:text-foreground"
                 onClick={() => setShowPassword((value) => !value)}
+                aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
           </div>
           {error ? (
-            <div className="rounded-md border border-destructive/35 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {error}
             </div>
           ) : null}

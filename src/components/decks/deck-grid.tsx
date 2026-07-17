@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DeckDialog } from "@/components/decks/deck-dialog";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import { formatDateRu } from "@/lib/date";
 
 export type DeckSummary = {
@@ -21,9 +22,9 @@ export type DeckSummary = {
 export function DeckGrid({ decks }: { decks: DeckSummary[] }) {
   if (decks.length === 0) {
     return (
-      <div className="grid place-items-center rounded-lg border border-dashed bg-card px-4 py-16 text-center">
+      <div className="grid place-items-center rounded-lg border border-dashed border-border-strong bg-card px-4 py-16 text-center shadow-soft">
         <div className="max-w-sm">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-secondary">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-blue-soft text-blue">
             <Plus className="h-6 w-6" />
           </div>
           <h2 className="mt-4 text-lg font-semibold">Пока нет наборов</h2>
@@ -41,12 +42,15 @@ export function DeckGrid({ decks }: { decks: DeckSummary[] }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {decks.map((deck) => (
-        <Card key={deck.id} className="flex min-h-56 flex-col">
+        <Card
+          key={deck.id}
+          className="flex min-h-60 flex-col transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lift"
+        >
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between gap-3">
-              <div>
+              <div className="min-w-0">
                 <CardTitle className="leading-tight">
-                  <Link href={`/decks/${deck.id}`} className="hover:underline">
+                  <Link href={`/decks/${deck.id}`} className="break-words hover:text-primary">
                     {deck.name}
                   </Link>
                 </CardTitle>
@@ -54,21 +58,23 @@ export function DeckGrid({ decks }: { decks: DeckSummary[] }) {
                   <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{deck.description}</p>
                 ) : null}
               </div>
-              {deck.dueTodayCount > 0 ? <Badge variant="warning">{deck.dueTodayCount} сегодня</Badge> : null}
+              <Badge variant={deck.dueTodayCount > 0 ? "warning" : "teal"} className="shrink-0">
+                {deck.dueTodayCount} сегодня
+              </Badge>
             </div>
           </CardHeader>
           <CardContent className="flex flex-1 flex-col justify-between gap-4">
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="rounded-md bg-secondary p-3">
+              <div className="rounded-md border border-border bg-surface-elevated p-3">
                 <div className="flex items-center gap-2 text-muted-foreground">
-                  <BookOpen className="h-4 w-4" />
+                  <BookOpen className="h-4 w-4 text-blue" />
                   Карточки
                 </div>
                 <div className="mt-1 text-xl font-semibold">{deck.cardCount}</div>
               </div>
-              <div className="rounded-md bg-secondary p-3">
+              <div className="rounded-md border border-border bg-surface-elevated p-3">
                 <div className="flex items-center gap-2 text-muted-foreground">
-                  <CalendarClock className="h-4 w-4" />
+                  <CalendarClock className="h-4 w-4 text-primary" />
                   Активность
                 </div>
                 <div className="mt-1 text-sm font-medium">{formatDateRu(deck.lastStudiedAt || deck.updatedAt)}</div>
@@ -79,9 +85,7 @@ export function DeckGrid({ decks }: { decks: DeckSummary[] }) {
                 <span className="text-muted-foreground">Прогресс</span>
                 <span className="font-medium">{deck.progress}%</span>
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-secondary">
-                <div className="h-full bg-primary" style={{ width: `${deck.progress}%` }} />
-              </div>
+              <ProgressBar value={deck.progress} />
             </div>
             <div className="flex gap-2">
               <Button asChild className="flex-1">

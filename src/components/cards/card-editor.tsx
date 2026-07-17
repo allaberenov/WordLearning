@@ -75,7 +75,7 @@ export function CardEditor({
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         {value.examples.map((example, index) => (
-          <div key={index} className="rounded-md border p-3">
+          <div key={index} className="rounded-md border border-border bg-surface-elevated p-3">
             <div className="mb-3 text-sm font-medium">Пример {index + 1}</div>
             <div className="space-y-3">
               <div className="space-y-2">

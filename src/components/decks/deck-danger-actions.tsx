@@ -37,7 +37,11 @@ export function DeckDangerActions({
           </Button>
         }
       />
-      <Button variant="destructive" onClick={remove}>
+      <Button
+        variant="outline"
+        className="border-destructive/40 text-destructive hover:bg-destructive/10"
+        onClick={remove}
+      >
         <Trash2 className="h-4 w-4" />
         Удалить
       </Button>

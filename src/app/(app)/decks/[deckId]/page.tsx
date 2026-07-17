@@ -76,12 +76,17 @@ export default async function DeckPage({
   }));
 
   const summary = [
-    { label: "Всего", value: data.totalCards, icon: Layers3 },
-    { label: cardStateLabels.NEW, value: data.stateCounts.NEW, icon: PlusCircle },
-    { label: cardStateLabels.LEARNING, value: data.stateCounts.LEARNING + data.stateCounts.RELEARNING, icon: RotateCcw },
-    { label: cardStateLabels.REVIEW, value: data.stateCounts.REVIEW, icon: Clock },
-    { label: "Просрочены", value: data.overdueCount, icon: BookOpen },
-    { label: cardStateLabels.MATURE, value: data.stateCounts.MATURE, icon: GraduationCap }
+    { label: "Всего", value: data.totalCards, icon: Layers3, tone: "text-blue bg-blue-soft" },
+    { label: cardStateLabels.NEW, value: data.stateCounts.NEW, icon: PlusCircle, tone: "text-blue bg-blue-soft" },
+    {
+      label: cardStateLabels.LEARNING,
+      value: data.stateCounts.LEARNING + data.stateCounts.RELEARNING,
+      icon: RotateCcw,
+      tone: "text-warning bg-warning/10"
+    },
+    { label: cardStateLabels.REVIEW, value: data.stateCounts.REVIEW, icon: Clock, tone: "text-primary bg-primary/10" },
+    { label: "Просрочены", value: data.overdueCount, icon: BookOpen, tone: "text-destructive bg-destructive/10" },
+    { label: cardStateLabels.MATURE, value: data.stateCounts.MATURE, icon: GraduationCap, tone: "text-success bg-success/10" }
   ];
 
   return (
@@ -89,7 +94,7 @@ export default async function DeckPage({
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-normal">{data.deck.name}</h1>
+            <h1 className="text-3xl font-semibold tracking-normal">{data.deck.name}</h1>
             {data.dueTodayCount > 0 ? <Badge variant="warning">{data.dueTodayCount} к повторению</Badge> : null}
           </div>
           {data.deck.description ? (
@@ -108,15 +113,17 @@ export default async function DeckPage({
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {summary.map((item) => {
           const Icon = item.icon;
           return (
-            <Card key={item.label}>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Icon className="h-4 w-4" />
-                  {item.label}
+            <Card key={item.label} className="transition-colors hover:border-border-strong">
+              <CardContent className="flex min-h-28 flex-col justify-between p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm text-muted-foreground">{item.label}</div>
+                  <div className={`flex h-9 w-9 items-center justify-center rounded-md ${item.tone}`}>
+                    <Icon className="h-4 w-4" />
+                  </div>
                 </div>
                 <div className="mt-2 text-2xl font-semibold">{item.value}</div>
               </CardContent>

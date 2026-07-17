@@ -42,7 +42,7 @@ export function DeckFilters() {
       <select
         value={state}
         onChange={(event) => changeState(event.target.value)}
-        className="focus-ring h-10 rounded-md border bg-background px-3 text-sm"
+        className="focus-ring h-10 rounded-md border border-input bg-background-secondary px-3 text-sm text-foreground hover:border-border-strong md:w-56"
       >
         <option value="all">Все статусы</option>
         <option value="NEW">Новые</option>

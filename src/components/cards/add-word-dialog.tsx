@@ -134,7 +134,7 @@ export function AddWordDialog({ deckId }: { deckId: string }) {
       }}
     >
       <DialogTrigger asChild>
-        <Button>
+        <Button variant="outline">
           <Plus className="h-4 w-4" />
           Добавить слово
         </Button>
@@ -160,7 +160,7 @@ export function AddWordDialog({ deckId }: { deckId: string }) {
               />
             </div>
             {generating ? (
-              <div className="rounded-md border bg-secondary px-3 py-3 text-sm">
+              <div className="rounded-md border border-border bg-surface-elevated px-3 py-3 text-sm text-foreground-secondary">
                 Подготавливаем карточку…
               </div>
             ) : null}
@@ -172,7 +172,7 @@ export function AddWordDialog({ deckId }: { deckId: string }) {
                     <Button asChild type="button" variant="outline" size="sm">
                       <Link href={`/cards/${duplicate.cardId}`}>Открыть существующую карточку</Link>
                     </Button>
-                    <Button type="button" variant="secondary" size="sm" onClick={cancel}>
+                    <Button type="button" variant="outline" size="sm" onClick={cancel}>
                       Отменить добавление
                     </Button>
                     <Button type="button" size="sm" onClick={() => generate(true)} disabled={generating}>
@@ -195,13 +195,13 @@ export function AddWordDialog({ deckId }: { deckId: string }) {
         ) : (
           <div className="space-y-4">
             {duplicate ? (
-              <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950/25 dark:text-amber-100">
+              <div className="rounded-md border border-warning/30 bg-warning/10 p-3 text-sm text-foreground">
                 Это слово уже добавлено в данный набор.
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Button asChild type="button" variant="outline" size="sm">
                     <Link href={`/cards/${duplicate.cardId}`}>Открыть существующую карточку</Link>
                   </Button>
-                  <Button type="button" variant="secondary" size="sm" onClick={cancel}>
+                  <Button type="button" variant="outline" size="sm" onClick={cancel}>
                     Отменить добавление
                   </Button>
                 </div>

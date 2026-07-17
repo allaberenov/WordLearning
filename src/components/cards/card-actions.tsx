@@ -102,24 +102,24 @@ export function CardActions({ card, decks }: { card: CardActionData; decks: Deck
     <>
       <DropdownMenu.Root>
         <DropdownMenu.Trigger asChild>
-          <Button variant="ghost" size="icon" title="Действия">
+          <Button variant="ghost" size="icon" title="Действия" aria-label="Действия карточки">
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
           <DropdownMenu.Content
             align="end"
-            className="z-50 min-w-52 rounded-md border bg-card p-1 text-card-foreground shadow-lg"
+            className="z-50 min-w-52 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-soft"
           >
             <DropdownMenu.Item asChild>
-              <Link className="flex cursor-pointer items-center gap-2 rounded px-2 py-2 text-sm hover:bg-secondary" href={`/cards/${card.id}`}>
+              <Link className="flex cursor-pointer items-center gap-2 rounded px-2 py-2 text-sm hover:bg-surface-hover focus:bg-surface-hover focus:outline-none" href={`/cards/${card.id}`}>
                 <Send className="h-4 w-4" />
                 Открыть
               </Link>
             </DropdownMenu.Item>
             <DropdownMenu.Item asChild>
               <button
-                className="flex w-full cursor-pointer items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-secondary"
+                className="flex w-full cursor-pointer items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-surface-hover focus:bg-surface-hover focus:outline-none"
                 onClick={() => setEditOpen(true)}
               >
                 <Edit3 className="h-4 w-4" />
@@ -128,7 +128,7 @@ export function CardActions({ card, decks }: { card: CardActionData; decks: Deck
             </DropdownMenu.Item>
             <DropdownMenu.Item asChild>
               <button
-                className="flex w-full cursor-pointer items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-secondary"
+                className="flex w-full cursor-pointer items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-surface-hover focus:bg-surface-hover focus:outline-none"
                 onClick={() => setMoveOpen(true)}
               >
                 <Send className="h-4 w-4" />
@@ -137,7 +137,7 @@ export function CardActions({ card, decks }: { card: CardActionData; decks: Deck
             </DropdownMenu.Item>
             <DropdownMenu.Item asChild>
               <button
-                className="flex w-full cursor-pointer items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-secondary"
+                className="flex w-full cursor-pointer items-center gap-2 rounded px-2 py-2 text-left text-sm hover:bg-surface-hover focus:bg-surface-hover focus:outline-none"
                 onClick={resetProgress}
               >
                 <RotateCcw className="h-4 w-4" />
@@ -146,7 +146,7 @@ export function CardActions({ card, decks }: { card: CardActionData; decks: Deck
             </DropdownMenu.Item>
             <DropdownMenu.Item asChild>
               <button
-                className="flex w-full cursor-pointer items-center gap-2 rounded px-2 py-2 text-left text-sm text-destructive hover:bg-destructive/10"
+                className="flex w-full cursor-pointer items-center gap-2 rounded px-2 py-2 text-left text-sm text-destructive hover:bg-destructive/10 focus:bg-destructive/10 focus:outline-none"
                 onClick={deleteCard}
               >
                 <Trash2 className="h-4 w-4" />
@@ -182,7 +182,7 @@ export function CardActions({ card, decks }: { card: CardActionData; decks: Deck
             <DialogDescription>Выберите другой набор для этой карточки.</DialogDescription>
           </DialogHeader>
           <select
-            className="focus-ring h-10 rounded-md border bg-background px-3 text-sm"
+            className="focus-ring h-10 rounded-md border border-input bg-background-secondary px-3 text-sm text-foreground hover:border-border-strong"
             value={targetDeckId}
             onChange={(event) => setTargetDeckId(event.target.value)}
           >

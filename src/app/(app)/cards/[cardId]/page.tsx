@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { ArrowLeft, CalendarClock, Repeat2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FlipRevealCard } from "@/components/cards/flip-reveal-card";
+import { StatusBadge } from "@/components/cards/status-badge";
 import { requireUser } from "@/lib/auth";
 import { assertCardOwner } from "@/lib/cards";
 import { formatDateRu } from "@/lib/date";
-import { cardStateLabels, ratingLabels } from "@/lib/labels";
+import { ratingLabels } from "@/lib/labels";
 import { prisma } from "@/lib/prisma";
 
 function normalizeExamples(value: unknown) {
@@ -51,7 +51,7 @@ export default async function CardPage({ params }: { params: Promise<{ cardId: s
                   {card.transcription || "без транскрипции"} · {card.partOfSpeech}
                 </p>
               </div>
-              <Badge>{cardStateLabels[card.state]}</Badge>
+              <StatusBadge state={card.state} />
             </div>
           </CardHeader>
           <CardContent className="space-y-5">
@@ -102,11 +102,11 @@ export default async function CardPage({ params }: { params: Promise<{ cardId: s
               </div>
               <div className="text-xl font-semibold">{formatDateRu(card.dueAt)}</div>
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="rounded-md bg-secondary p-3">
+                <div className="rounded-md border border-border bg-surface-elevated p-3">
                   <div className="text-muted-foreground">Повторы</div>
                   <div className="text-lg font-semibold">{card.reps}</div>
                 </div>
-                <div className="rounded-md bg-secondary p-3">
+                <div className="rounded-md border border-border bg-surface-elevated p-3">
                   <div className="text-muted-foreground">Ошибки</div>
                   <div className="text-lg font-semibold">{card.lapses}</div>
                 </div>
@@ -146,7 +146,9 @@ export default async function CardPage({ params }: { params: Promise<{ cardId: s
                       <TableCell>{formatDateRu(review.reviewedAt)}</TableCell>
                       <TableCell>{ratingLabels[review.rating]}</TableCell>
                       <TableCell>{formatDateRu(review.nextDueAt)}</TableCell>
-                      <TableCell>{cardStateLabels[review.nextState]}</TableCell>
+                      <TableCell>
+                        <StatusBadge state={review.nextState} />
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

@@ -3,48 +3,70 @@
 @tailwind utilities;
 
 :root {
-  --background: 42 38% 97%;
-  --foreground: 28 28% 13%;
+  --background: 214 45% 97%;
+  --background-secondary: 214 42% 94%;
+  --surface: 0 0% 100%;
+  --surface-elevated: 213 43% 99%;
+  --surface-hover: 211 35% 93%;
+  --foreground: 216 56% 12%;
+  --foreground-secondary: 216 24% 34%;
   --card: 0 0% 100%;
-  --card-foreground: 28 28% 13%;
+  --card-foreground: 216 56% 12%;
   --popover: 0 0% 100%;
-  --popover-foreground: 28 28% 13%;
-  --primary: 154 42% 29%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 36 44% 91%;
-  --secondary-foreground: 30 28% 18%;
-  --muted: 38 31% 92%;
-  --muted-foreground: 31 12% 42%;
-  --accent: 14 78% 58%;
+  --popover-foreground: 216 56% 12%;
+  --primary: 169 66% 47%;
+  --primary-foreground: 185 74% 9%;
+  --secondary: 214 58% 24%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 214 34% 92%;
+  --muted-foreground: 216 18% 43%;
+  --accent: 209 100% 56%;
   --accent-foreground: 0 0% 100%;
   --destructive: 0 72% 50%;
   --destructive-foreground: 0 0% 100%;
-  --border: 33 24% 84%;
-  --input: 33 24% 84%;
-  --ring: 154 42% 34%;
+  --border: 214 28% 84%;
+  --border-strong: 214 28% 68%;
+  --input: 214 28% 84%;
+  --ring: 169 66% 47%;
+  --blue: 209 100% 56%;
+  --blue-soft: 209 100% 56% / 0.14;
+  --success: 142 71% 45%;
+  --warning: 38 92% 50%;
+  --danger: 0 84% 60%;
   --radius: 0.5rem;
 }
 
 .dark {
-  --background: 28 20% 8%;
-  --foreground: 38 24% 92%;
-  --card: 28 18% 12%;
-  --card-foreground: 38 24% 92%;
-  --popover: 28 18% 12%;
-  --popover-foreground: 38 24% 92%;
-  --primary: 152 38% 48%;
-  --primary-foreground: 30 22% 8%;
-  --secondary: 30 18% 20%;
-  --secondary-foreground: 38 24% 92%;
-  --muted: 30 15% 18%;
-  --muted-foreground: 35 12% 69%;
-  --accent: 16 76% 60%;
-  --accent-foreground: 28 24% 9%;
-  --destructive: 0 66% 50%;
+  --background: 214 59% 8%;
+  --background-secondary: 216 51% 10%;
+  --surface: 216 49% 13%;
+  --surface-elevated: 218 43% 16%;
+  --surface-hover: 216 44% 19%;
+  --foreground: 218 55% 97%;
+  --foreground-secondary: 216 35% 82%;
+  --card: 216 49% 13%;
+  --card-foreground: 218 55% 97%;
+  --popover: 216 49% 13%;
+  --popover-foreground: 218 55% 97%;
+  --primary: 169 66% 52%;
+  --primary-foreground: 184 77% 9%;
+  --secondary: 213 66% 26%;
+  --secondary-foreground: 218 55% 97%;
+  --muted: 216 34% 17%;
+  --muted-foreground: 216 25% 69%;
+  --accent: 209 100% 56%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --border: 29 13% 25%;
-  --input: 29 13% 25%;
-  --ring: 152 38% 48%;
+  --border: 216 37% 24%;
+  --border-strong: 214 35% 33%;
+  --input: 216 37% 24%;
+  --ring: 169 66% 52%;
+  --blue: 209 100% 56%;
+  --blue-soft: 209 100% 56% / 0.14;
+  --success: 142 71% 45%;
+  --warning: 38 92% 50%;
+  --danger: 0 84% 60%;
 }
 
 * {
@@ -54,14 +76,15 @@
 body {
   min-height: 100vh;
   background:
-    linear-gradient(180deg, hsl(var(--background)) 0%, hsl(40 32% 94%) 100%);
+    linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--background-secondary)) 100%);
   color: hsl(var(--foreground));
   font-feature-settings: "rlig" 1, "calt" 1;
+  text-rendering: optimizeLegibility;
 }
 
 .dark body {
   background:
-    linear-gradient(180deg, hsl(var(--background)) 0%, hsl(28 18% 6%) 100%);
+    linear-gradient(180deg, hsl(var(--background)) 0%, hsl(216 62% 6%) 100%);
 }
 
 button,
@@ -77,4 +100,15 @@ textarea {
 
 .focus-ring {
   @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }
