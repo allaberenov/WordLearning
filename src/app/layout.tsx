@@ -5,7 +5,7 @@ import { ToastProvider } from "@/components/providers/toast-provider";
 import { OfflineBanner } from "@/components/layout/offline-banner";
 
 export const metadata: Metadata = {
-  title: "Word Learning",
+  title: "Dublind",
   description: "Интервальные повторения английских слов"
 };
 

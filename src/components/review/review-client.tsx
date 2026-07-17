@@ -1,11 +1,12 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Keyboard, Loader2, Volume2, XCircle } from "lucide-react";
+import { CheckCircle2, Loader2, Volume2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { FlipRevealCard } from "@/components/cards/flip-reveal-card";
 import { classifyTypedAnswer } from "@/lib/utils";
 import { ratingLabels } from "@/lib/labels";
 
@@ -191,10 +192,6 @@ export function ReviewClient({
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Повторение</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            <Keyboard className="mr-1 inline h-4 w-4" />
-            Space раскрывает ответ, 1-4 выбирают оценку.
-          </p>
         </div>
         <Badge>{cardMode === "WRITE" ? "Написать ответ" : "Карточка"}</Badge>
       </div>
@@ -203,10 +200,15 @@ export function ReviewClient({
         <CardContent className="p-6 sm:p-8">
           {!revealed && cardMode === "WRITE" ? (
             <form className="mx-auto max-w-xl space-y-5 text-center" onSubmit={checkAnswer}>
-              <div>
+              <div className="space-y-4">
                 <p className="text-sm font-medium text-muted-foreground">Подсказка</p>
-                <p className="mt-2 text-2xl font-semibold">{card.translations.join(", ")}</p>
-                <p className="mt-4 text-lg text-muted-foreground">{card.definitionEn}</p>
+                <FlipRevealCard
+                  front={<span>{card.definitionEn}</span>}
+                  back={<span>{card.translations.join(", ")}</span>}
+                  frontLabel="Definition"
+                  backLabel="Значение"
+                  className="text-left"
+                />
               </div>
               <Input
                 value={typedAnswer}
@@ -249,22 +251,36 @@ export function ReviewClient({
                   {answerResult === "wrong" ? "Ответ не совпал, правильный ответ ниже." : null}
                 </div>
               ) : null}
-              <div className="grid gap-4 md:grid-cols-[280px_1fr]">
-                <div className="rounded-md bg-secondary p-4">
-                  <div className="text-sm font-medium text-muted-foreground">Перевод</div>
-                  <div className="mt-2 text-xl font-semibold">{card.translations.join(", ")}</div>
-                </div>
-                <div className="rounded-md bg-secondary p-4">
-                  <div className="text-sm font-medium text-muted-foreground">Definition</div>
-                  <div className="mt-2 text-lg">{card.definitionEn}</div>
-                </div>
+              <div className="grid gap-4 md:grid-cols-[minmax(220px,0.8fr)_1fr]">
+                <FlipRevealCard
+                  front={
+                    <span>
+                      {card.word}
+                      <span className="mt-2 block text-sm font-normal text-muted-foreground">
+                        {card.transcription || "без транскрипции"} · {card.partOfSpeech}
+                      </span>
+                    </span>
+                  }
+                  back={<span>{card.translations.join(", ")}</span>}
+                  frontLabel="Word"
+                  backLabel="Перевод"
+                />
+                <FlipRevealCard
+                  front={<span>{card.definitionEn}</span>}
+                  back={<span>{card.translations.join(", ")}</span>}
+                  frontLabel="Definition"
+                  backLabel="Значение"
+                />
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 {card.examples.map((example, index) => (
-                  <div key={index} className="rounded-md border p-4">
-                    <p className="font-medium">{example.en}</p>
-                    <p className="mt-2 text-sm text-muted-foreground">{example.ru}</p>
-                  </div>
+                  <FlipRevealCard
+                    key={index}
+                    front={<span>{example.en}</span>}
+                    back={<span>{example.ru}</span>}
+                    frontLabel={`Example ${index + 1}`}
+                    backLabel="Перевод"
+                  />
                 ))}
               </div>
               <div className="grid gap-2 sm:grid-cols-4">

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CardActions } from "@/components/cards/card-actions";
+import { FlipRevealCard } from "@/components/cards/flip-reveal-card";
 import { formatDateRu } from "@/lib/date";
 import { cardStateLabels } from "@/lib/labels";
 import type { GeneratedCardInput } from "@/lib/schemas";
@@ -49,7 +50,7 @@ export function CardTable({
           <TableHeader>
             <TableRow>
               <TableHead>Слово</TableHead>
-              <TableHead>Перевод</TableHead>
+              <TableHead>Значение</TableHead>
               <TableHead>Статус</TableHead>
               <TableHead>Следующее повторение</TableHead>
               <TableHead>Создано</TableHead>
@@ -68,7 +69,13 @@ export function CardTable({
                   </div>
                 </TableCell>
                 <TableCell className="max-w-[260px]">
-                  <span className="line-clamp-2">{card.translations.join(", ")}</span>
+                  <FlipRevealCard
+                    front={<span className="text-muted-foreground">•••</span>}
+                    back={<span className="line-clamp-2">{card.translations.join(", ")}</span>}
+                    frontLabel="RU"
+                    backLabel="Перевод"
+                    compact
+                  />
                 </TableCell>
                 <TableCell>
                   <Badge variant={stateVariant(card.state)}>{cardStateLabels[card.state] || card.state}</Badge>

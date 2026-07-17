@@ -1,6 +1,6 @@
-# Word Learning
+# Dublind
 
-Word Learning is a full-stack web application for learning and retaining English vocabulary with spaced repetition. The application UI is in Russian, while vocabulary cards contain English words, Russian translations, simple English definitions, and contextual examples.
+Dublind is a full-stack web application for learning and retaining English vocabulary with spaced repetition. The application UI is in Russian, while vocabulary cards contain English words, Russian translations, simple English definitions, and contextual examples.
 
 ## Features
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus, Save, Wand2 } from "lucide-react";
@@ -31,17 +31,37 @@ export function AddWordDialog({ deckId }: { deckId: string }) {
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const generationRequestRef = useRef<AbortController | null>(null);
+
+  function resetForm() {
+    setWord("");
+    setCard(null);
+    setDuplicate(null);
+    setGenerating(false);
+    setSaving(false);
+    setError(null);
+  }
+
+  function cancel() {
+    generationRequestRef.current?.abort();
+    generationRequestRef.current = null;
+    resetForm();
+    setOpen(false);
+  }
 
   async function generate(force = false) {
     if (generating || !word.trim()) return;
     setGenerating(true);
     setError(null);
     setDuplicate(null);
+    const controller = new AbortController();
+    generationRequestRef.current = controller;
     try {
       const response = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ deckId, input: word, force })
+        body: JSON.stringify({ deckId, input: word, force }),
+        signal: controller.signal
       });
       const payload = await response.json();
       if (!response.ok) {
@@ -55,9 +75,14 @@ export function AddWordDialog({ deckId }: { deckId: string }) {
       }
       setCard(payload.card);
       setDuplicate(payload.duplicate);
-    } catch {
-      setError("Нет соединения с сервером.");
+    } catch (caught) {
+      if ((caught as Error).name !== "AbortError") {
+        setError("Нет соединения с сервером.");
+      }
     } finally {
+      if (generationRequestRef.current === controller) {
+        generationRequestRef.current = null;
+      }
       setGenerating(false);
     }
   }
@@ -81,10 +106,8 @@ export function AddWordDialog({ deckId }: { deckId: string }) {
         return;
       }
       toast({ title: "Карточка сохранена", description: payload.card.word });
+      resetForm();
       setOpen(false);
-      setWord("");
-      setCard(null);
-      setDuplicate(null);
       router.refresh();
     } catch {
       setError("Нет соединения с сервером.");
@@ -99,7 +122,17 @@ export function AddWordDialog({ deckId }: { deckId: string }) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) {
+          generationRequestRef.current?.abort();
+          generationRequestRef.current = null;
+          resetForm();
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <Button>
           <Plus className="h-4 w-4" />
@@ -139,7 +172,7 @@ export function AddWordDialog({ deckId }: { deckId: string }) {
                     <Button asChild type="button" variant="outline" size="sm">
                       <Link href={`/cards/${duplicate.cardId}`}>Открыть существующую карточку</Link>
                     </Button>
-                    <Button type="button" variant="secondary" size="sm" onClick={() => setOpen(false)}>
+                    <Button type="button" variant="secondary" size="sm" onClick={cancel}>
                       Отменить добавление
                     </Button>
                     <Button type="button" size="sm" onClick={() => generate(true)} disabled={generating}>
@@ -149,10 +182,15 @@ export function AddWordDialog({ deckId }: { deckId: string }) {
                 ) : null}
               </div>
             ) : null}
-            <Button disabled={generating || !word.trim()}>
-              {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-              Сгенерировать карточку
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button disabled={generating || !word.trim()}>
+                {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                Сгенерировать карточку
+              </Button>
+              <Button type="button" variant="outline" onClick={cancel}>
+                Отменить
+              </Button>
+            </div>
           </form>
         ) : (
           <div className="space-y-4">
@@ -163,7 +201,7 @@ export function AddWordDialog({ deckId }: { deckId: string }) {
                   <Button asChild type="button" variant="outline" size="sm">
                     <Link href={`/cards/${duplicate.cardId}`}>Открыть существующую карточку</Link>
                   </Button>
-                  <Button type="button" variant="secondary" size="sm" onClick={() => setOpen(false)}>
+                  <Button type="button" variant="secondary" size="sm" onClick={cancel}>
                     Отменить добавление
                   </Button>
                 </div>
@@ -183,6 +221,9 @@ export function AddWordDialog({ deckId }: { deckId: string }) {
               ) : null}
               <Button variant="ghost" onClick={() => setCard(null)} disabled={saving}>
                 Вернуться к вводу
+              </Button>
+              <Button variant="outline" onClick={cancel} disabled={saving}>
+                Отменить
               </Button>
             </div>
           </div>

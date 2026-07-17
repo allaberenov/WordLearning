@@ -8,10 +8,10 @@ import {
   CircleUserRound,
   LogOut,
   Repeat2,
-  Settings,
-  Sparkles
+  Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BrandLogo } from "@/components/layout/brand-logo";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/providers/toast-provider";
 
@@ -43,16 +43,10 @@ export function AppShell({
 
   return (
     <div className="min-h-screen pb-20 md:pb-0">
-      <header className="sticky top-0 z-40 border-b bg-background/92 backdrop-blur">
+      <header className="sticky top-0 z-40 border-b bg-card/90 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
           <Link href="/decks" className="focus-ring flex items-center gap-2 rounded-md">
-            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="text-sm font-semibold leading-tight">Word Learning</div>
-              <div className="hidden text-xs text-muted-foreground sm:block">{user.name || user.email}</div>
-            </div>
+            <BrandLogo subtitle={user.name || user.email} compact />
           </Link>
           <nav className="hidden items-center gap-1 md:flex">
             {navItems.map((item) => {
@@ -64,7 +58,7 @@ export function AppShell({
                   href={item.href}
                   className={cn(
                     "focus-ring inline-flex h-10 items-center gap-2 rounded-md px-3 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground",
-                    active && "bg-secondary text-foreground"
+                    active && "bg-secondary text-foreground shadow-soft"
                   )}
                 >
                   <Icon className="h-4 w-4" />

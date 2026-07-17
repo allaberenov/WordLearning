@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { BrandLogo } from "@/components/layout/brand-logo";
 import { useToast } from "@/components/providers/toast-provider";
 
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
@@ -59,7 +60,8 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
 
   return (
     <Card className="w-full max-w-md">
-      <CardHeader>
+      <CardHeader className="items-center text-center">
+        <BrandLogo subtitle="English that sticks" centered />
         <CardTitle>{mode === "login" ? "Вход" : "Регистрация"}</CardTitle>
         <CardDescription>
           {mode === "login"

@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { FlipRevealCard } from "@/components/cards/flip-reveal-card";
 import { requireUser } from "@/lib/auth";
 import { assertCardOwner } from "@/lib/cards";
 import { formatDateRu } from "@/lib/date";
@@ -54,22 +55,40 @@ export default async function CardPage({ params }: { params: Promise<{ cardId: s
             </div>
           </CardHeader>
           <CardContent className="space-y-5">
-            <section>
-              <h2 className="text-sm font-semibold text-muted-foreground">Перевод</h2>
-              <p className="mt-1 text-xl font-medium">{card.translations.join(", ")}</p>
-            </section>
-            <section>
-              <h2 className="text-sm font-semibold text-muted-foreground">Определение</h2>
-              <p className="mt-1 text-lg">{card.definitionEn}</p>
-            </section>
+            <div className="grid gap-4 md:grid-cols-[minmax(220px,0.75fr)_1fr]">
+              <FlipRevealCard
+                front={
+                  <span>
+                    {card.word}
+                    <span className="mt-2 block text-sm font-normal text-muted-foreground">
+                      {card.transcription || "без транскрипции"} · {card.partOfSpeech}
+                    </span>
+                  </span>
+                }
+                back={<span>{card.translations.join(", ")}</span>}
+                frontLabel="Word"
+                backLabel="Перевод"
+              />
+              <FlipRevealCard
+                front={<span>{card.definitionEn}</span>}
+                back={<span>{card.translations.join(", ")}</span>}
+                frontLabel="Definition"
+                backLabel="Значение"
+              />
+            </div>
             <section className="space-y-3">
               <h2 className="text-sm font-semibold text-muted-foreground">Примеры</h2>
-              {examples.map((example, index) => (
-                <div key={index} className="rounded-md border p-3">
-                  <p className="font-medium">{example.en}</p>
-                  <p className="mt-1 text-sm text-muted-foreground">{example.ru}</p>
-                </div>
-              ))}
+              <div className="grid gap-3 md:grid-cols-2">
+                {examples.map((example, index) => (
+                  <FlipRevealCard
+                    key={index}
+                    front={<span>{example.en}</span>}
+                    back={<span>{example.ru}</span>}
+                    frontLabel={`Example ${index + 1}`}
+                    backLabel="Перевод"
+                  />
+                ))}
+              </div>
             </section>
           </CardContent>
         </Card>
