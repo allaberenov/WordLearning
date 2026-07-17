@@ -50,3 +50,35 @@ export function requireRateLimit(key: string, limit: number, windowMs: number) {
   }
   return result;
 }
+
+function readPositiveIntEnv(name: string, fallback: number) {
+  const raw = process.env[name]?.trim();
+  if (!raw) return fallback;
+
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < 1) return fallback;
+  return Math.trunc(parsed);
+}
+
+export function getGenerationRateLimits() {
+  return {
+    requestsPerMinute: readPositiveIntEnv("GENERATION_RATE_LIMIT_RPM", 60),
+    requestsPerDay: readPositiveIntEnv("GENERATION_RATE_LIMIT_RPD", 1000)
+  };
+}
+
+export function requireGenerationRateLimit(userId: string, request: Request) {
+  const clientIp = getClientIp(request);
+  const limits = getGenerationRateLimits();
+
+  requireRateLimit(
+    `generation:minute:${userId}:${clientIp}`,
+    limits.requestsPerMinute,
+    60 * 1000
+  );
+  requireRateLimit(
+    `generation:day:${userId}:${clientIp}`,
+    limits.requestsPerDay,
+    24 * 60 * 60 * 1000
+  );
+}

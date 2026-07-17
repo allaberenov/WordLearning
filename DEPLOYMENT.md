@@ -76,6 +76,9 @@ GROQ_API_KEY=
 GROQ_MODEL=qwen/qwen3-32b
 GROQ_BASE_URL=https://api.groq.com/openai/v1
 GROQ_TIMEOUT_MS=20000
+
+GENERATION_RATE_LIMIT_RPM=60
+GENERATION_RATE_LIMIT_RPD=1000
 ```
 
 Use a new Gemini key. Do not reuse a key that was pasted into chat or logs.
@@ -186,6 +189,8 @@ GEMINI_TIMEOUT_MS
 GROQ_BASE_URL
 GROQ_MODEL
 GROQ_TIMEOUT_MS
+GENERATION_RATE_LIMIT_RPM
+GENERATION_RATE_LIMIT_RPD
 ```
 
 Optional repository variables:

@@ -138,6 +138,8 @@ jobs:
           GROQ_MODEL: ${{ vars.GROQ_MODEL || 'qwen/qwen3-32b' }}
           GROQ_BASE_URL: ${{ vars.GROQ_BASE_URL || 'https://api.groq.com/openai/v1' }}
           GROQ_TIMEOUT_MS: ${{ vars.GROQ_TIMEOUT_MS || '20000' }}
+          GENERATION_RATE_LIMIT_RPM: ${{ vars.GENERATION_RATE_LIMIT_RPM || '60' }}
+          GENERATION_RATE_LIMIT_RPD: ${{ vars.GENERATION_RATE_LIMIT_RPD || '1000' }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-4o-mini' }}
           DOMAIN: ${{ vars.DOMAIN }}
@@ -166,6 +168,9 @@ jobs:
             printf 'GROQ_MODEL=%s\n' "${GROQ_MODEL:-qwen/qwen3-32b}"
             printf 'GROQ_BASE_URL=%s\n' "${GROQ_BASE_URL:-https://api.groq.com/openai/v1}"
             printf 'GROQ_TIMEOUT_MS=%s\n' "${GROQ_TIMEOUT_MS:-20000}"
+            printf '\n'
+            printf 'GENERATION_RATE_LIMIT_RPM=%s\n' "${GENERATION_RATE_LIMIT_RPM:-60}"
+            printf 'GENERATION_RATE_LIMIT_RPD=%s\n' "${GENERATION_RATE_LIMIT_RPD:-1000}"
             printf '\n'
             printf 'OPENAI_API_KEY=%s\n' "${OPENAI_API_KEY:-}"
             printf 'OPENAI_MODEL=%s\n' "${OPENAI_MODEL:-gpt-4o-mini}"

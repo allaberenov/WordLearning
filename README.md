@@ -60,6 +60,10 @@ GROQ_MODEL="qwen/qwen3-32b"
 GROQ_BASE_URL="https://api.groq.com/openai/v1"
 GROQ_TIMEOUT_MS="20000"
 
+# Defaults match Groq qwen/qwen3-32b request limits: 60 RPM and 1000 RPD.
+GENERATION_RATE_LIMIT_RPM="60"
+GENERATION_RATE_LIMIT_RPD="1000"
+
 OPENAI_API_KEY=""
 OPENAI_MODEL="gpt-4o-mini"
 ```

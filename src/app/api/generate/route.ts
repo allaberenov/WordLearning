@@ -3,7 +3,7 @@ import { requireApiUser } from "@/lib/auth";
 import { assertDeckOwner } from "@/lib/decks";
 import { findDuplicateCard } from "@/lib/cards";
 import { generateVocabularyCard } from "@/lib/openai";
-import { getClientIp, requireRateLimit } from "@/lib/rate-limit";
+import { requireGenerationRateLimit } from "@/lib/rate-limit";
 import { generateWordSchema } from "@/lib/schemas";
 import { normalizeWord } from "@/lib/utils";
 
@@ -12,7 +12,6 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   try {
     const user = await requireApiUser();
-    requireRateLimit(`openai:${user.id}:${getClientIp(request)}`, 20, 24 * 60 * 60 * 1000);
     const input = await readJson(request, generateWordSchema, { maxBytes: 4_000 });
     await assertDeckOwner(user.id, input.deckId);
 
@@ -30,6 +29,7 @@ export async function POST(request: Request) {
       );
     }
 
+    requireGenerationRateLimit(user.id, request);
     const card = await generateVocabularyCard(input.input);
     const duplicate = await findDuplicateCard(input.deckId, normalizeWord(card.normalizedWord));
     return apiOk({
