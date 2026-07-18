@@ -103,9 +103,12 @@ export function SentenceChecker({ cardId, word }: { cardId: string; word: string
         ) : null}
       </div>
       {result?.correctedSentence ? (
-        <div className="mt-2 rounded-md border border-border bg-background-secondary px-3 py-2 text-sm">
-          <span className="text-muted-foreground">{result.score === 4 ? "Лучше так: " : "Вариант: "}</span>
-          <span className="font-medium">{result.correctedSentence}</span>
+        <div className="mt-2 space-y-2 rounded-md border border-border bg-background-secondary px-3 py-2 text-sm">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="info">Вторая версия</Badge>
+            <span className="text-muted-foreground">{result.score === 4 ? "Лучше так" : "Вариант"}</span>
+          </div>
+          <span className="block font-medium">{result.correctedSentence}</span>
         </div>
       ) : null}
     </form>

@@ -288,7 +288,7 @@ export function ReviewClient({
                   front={<span>{card.definitionEn}</span>}
                   back={<span>{card.translations.join(", ")}</span>}
                   frontLabel="Definition"
-                  backLabel="Значение"
+                  backLabel="Перевод"
                 />
               </div>
               <div className="grid gap-3 md:grid-cols-2">
