@@ -67,4 +67,16 @@ describe("OpenAI structured output parsing", () => {
       )
     ).toThrow();
   });
+
+  it("normalizes inconsistent sentence check score", () => {
+    const parsed = parseSentenceCheck(
+      JSON.stringify({
+        score: 1,
+        correct: true,
+        feedback: "Правильно использовано слово.",
+        correctedSentence: null
+      })
+    );
+    expect(parsed.score).toBe(4);
+  });
 });

@@ -197,6 +197,16 @@ function getGroqModel() {
   return model === "qwen/qwen3-32b" ? "qwen/qwen3.6-27b" : model;
 }
 
+function getGroqSentenceModel() {
+  const model = process.env.GROQ_SENTENCE_MODEL?.trim();
+  if (model) {
+    return model === "qwen/qwen3-32b" || model.startsWith("qwen/")
+      ? "llama-3.1-8b-instant"
+      : model;
+  }
+  return getGroqModel().startsWith("qwen/") ? "llama-3.1-8b-instant" : getGroqModel();
+}
+
 function getProviderTimeoutMs() {
   return getProvider() === "ollama"
     ? Number(process.env.OLLAMA_TIMEOUT_MS || 60_000)
@@ -258,8 +268,12 @@ export function parseGeneratedCard(raw: string): GeneratedCardInput {
 export function parseSentenceCheck(raw: string): SentenceCheckResult {
   const parsed = JSON.parse(extractJsonObject(raw)) as unknown;
   const validated = sentenceCheckResultSchema.parse(parsed);
+  const score = validated.correct
+    ? Math.max(4, validated.score)
+    : Math.min(3, validated.score);
   return {
     ...validated,
+    score,
     feedback: validated.feedback.trim(),
     correctedSentence: validated.correctedSentence?.trim() || null
   };
@@ -620,7 +634,7 @@ Return a single valid JSON object only. The response must be JSON.`;
     },
     signal,
     body: JSON.stringify({
-      model: getGroqModel(),
+      model: getGroqSentenceModel(),
       messages: [
         {
           role: "system",
