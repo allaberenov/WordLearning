@@ -67,7 +67,6 @@ export function ReviewClient({
   const [typedAnswer, setTypedAnswer] = useState("");
   const [answerResult, setAnswerResult] = useState<"correct" | "typo" | "wrong" | null>(null);
   const [cardMode, setCardMode] = useState<"FLASHCARD" | "WRITE">("FLASHCARD");
-  const [sentenceReady, setSentenceReady] = useState(false);
 
   const previewMap = useMemo(() => {
     const map = new Map<string, Preview>();
@@ -81,7 +80,6 @@ export function ReviewClient({
     setRevealed(false);
     setTypedAnswer("");
     setAnswerResult(null);
-    setSentenceReady(false);
     try {
       const params = deckId ? `?deckId=${deckId}` : "";
       const response = await fetch(`/api/review${params}`);
@@ -118,7 +116,6 @@ export function ReviewClient({
       const index = Number(event.key) - 1;
       if (index >= 0 && index < ratingOrder.length) {
         event.preventDefault();
-        if (!sentenceReady) return;
         void submitRating(ratingOrder[index]);
       }
     }
@@ -142,7 +139,7 @@ export function ReviewClient({
   }
 
   async function submitRating(rating: Preview["rating"]) {
-    if (!card || submitting || !revealed || !sentenceReady) return;
+    if (!card || submitting || !revealed) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -305,17 +302,7 @@ export function ReviewClient({
                   />
                 ))}
               </div>
-              <SentenceChecker
-                key={card.id}
-                cardId={card.id}
-                word={card.word}
-                onSuccessChange={setSentenceReady}
-              />
-              {!sentenceReady ? (
-                <p className="rounded-md border border-warning/25 bg-warning/10 px-3 py-2 text-sm text-warning">
-                  Сначала составьте предложение с этим словом и успешно проверьте его.
-                </p>
-              ) : null}
+              <SentenceChecker key={card.id} cardId={card.id} word={card.word} />
               <div className="grid gap-2 sm:grid-cols-4">
                 {ratingOrder.map((rating, index) => (
                   <Button
@@ -323,8 +310,7 @@ export function ReviewClient({
                     type="button"
                     variant={rating === "AGAIN" ? "danger" : "outline"}
                     className={`h-auto flex-col py-3 ${ratingStyles[rating]}`}
-                    disabled={submitting || !sentenceReady}
-                    title={!sentenceReady ? "Сначала успешно проверьте предложение" : undefined}
+                    disabled={submitting}
                     onClick={() => submitRating(rating)}
                   >
                     <span>

@@ -13,15 +13,7 @@ type SentenceCheckResult = {
   correctedSentence?: string | null;
 };
 
-export function SentenceChecker({
-  cardId,
-  word,
-  onSuccessChange
-}: {
-  cardId: string;
-  word: string;
-  onSuccessChange?: (successful: boolean) => void;
-}) {
+export function SentenceChecker({ cardId, word }: { cardId: string; word: string }) {
   const [sentence, setSentence] = useState("");
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState<SentenceCheckResult | null>(null);
@@ -29,13 +21,12 @@ export function SentenceChecker({
   const requestRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    onSuccessChange?.(false);
     return () => {
       const controller = requestRef.current;
       requestRef.current = null;
       controller?.abort();
     };
-  }, [cardId, onSuccessChange]);
+  }, []);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -45,7 +36,6 @@ export function SentenceChecker({
     setChecking(true);
     setError(null);
     setResult(null);
-    onSuccessChange?.(false);
     requestRef.current?.abort();
     const controller = new AbortController();
     requestRef.current = controller;
@@ -60,15 +50,12 @@ export function SentenceChecker({
       const payload = await response.json();
       if (!response.ok) {
         setError(payload.error || "Не удалось проверить предложение.");
-        onSuccessChange?.(false);
         return;
       }
       setResult(payload.result);
-      onSuccessChange?.(Boolean(payload.result?.correct));
     } catch (caught) {
       if ((caught as Error).name !== "AbortError") {
         setError("Нет соединения с сервером.");
-        onSuccessChange?.(false);
       }
     } finally {
       if (requestRef.current === controller) {
@@ -91,7 +78,6 @@ export function SentenceChecker({
             setSentence(event.target.value);
             if (result) setResult(null);
             if (error) setError(null);
-            onSuccessChange?.(false);
           }}
           placeholder={`Например: I used "${word}" in a sentence.`}
           maxLength={500}
