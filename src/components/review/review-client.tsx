@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { FlipRevealCard } from "@/components/cards/flip-reveal-card";
+import { SentenceChecker } from "@/components/review/sentence-checker";
 import { classifyTypedAnswer } from "@/lib/utils";
 import { ratingLabels } from "@/lib/labels";
 
@@ -36,6 +37,16 @@ const ratingStyles: Record<Preview["rating"], string> = {
   GOOD: "border-blue/40 bg-blue-soft text-blue hover:bg-blue-soft",
   EASY: "border-success/40 bg-success/10 text-success hover:bg-success/20"
 };
+
+function isTypingTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) return false;
+  return (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement ||
+    target.isContentEditable
+  );
+}
 
 export function ReviewClient({
   deckId,
@@ -96,6 +107,7 @@ export function ReviewClient({
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (!card || submitting) return;
+      if (isTypingTarget(event.target)) return;
       if (event.code === "Space") {
         event.preventDefault();
         setRevealed(true);
@@ -290,6 +302,7 @@ export function ReviewClient({
                   />
                 ))}
               </div>
+              <SentenceChecker key={card.id} cardId={card.id} word={card.word} />
               <div className="grid gap-2 sm:grid-cols-4">
                 {ratingOrder.map((rating, index) => (
                   <Button

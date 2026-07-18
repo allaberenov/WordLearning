@@ -65,6 +65,26 @@ export const submitReviewSchema = z.object({
   responseTimeMs: z.number().int().min(0).max(10 * 60 * 1000).optional()
 });
 
+export const sentenceCheckRequestSchema = z.object({
+  cardId: z.string().uuid(),
+  sentence: z.string().trim().min(3, "Введите предложение").max(500, "Предложение слишком длинное")
+});
+
+function countWords(value: string) {
+  return value.trim().split(/\s+/).filter(Boolean).length;
+}
+
+export const sentenceCheckResultSchema = z
+  .object({
+    score: z.number().int().min(1).max(5),
+    correct: z.boolean(),
+    feedback: z.string().trim().min(1).max(160).refine((value) => countWords(value) <= 20, {
+      message: "Feedback must contain no more than 20 words"
+    }),
+    correctedSentence: z.string().trim().min(1).max(500).nullable().optional()
+  })
+  .strict();
+
 export const settingsSchema = z.object({
   newCardsPerDay: z.number().int().min(0).max(200),
   maxReviewsPerDay: z.number().int().min(1).max(1000),
@@ -78,3 +98,4 @@ export const settingsSchema = z.object({
 });
 
 export type GeneratedCardInput = z.infer<typeof generatedCardSchema>;
+export type SentenceCheckResult = z.infer<typeof sentenceCheckResultSchema>;

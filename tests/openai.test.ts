@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { generatedCardSchema } from "@/lib/schemas";
-import { parseGeneratedCard } from "@/lib/openai";
+import { parseGeneratedCard, parseSentenceCheck } from "@/lib/openai";
 
 const validCard = {
   word: "abandon",
@@ -35,6 +35,36 @@ describe("OpenAI structured output parsing", () => {
   it("rejects cards without exactly two examples", () => {
     expect(() =>
       parseGeneratedCard(JSON.stringify({ ...validCard, examples: validCard.examples.slice(0, 1) }))
+    ).toThrow();
+  });
+
+  it("validates sentence check JSON", () => {
+    const parsed = parseSentenceCheck(
+      JSON.stringify({
+        score: 4,
+        correct: true,
+        feedback: "Хорошее предложение, звучит естественно.",
+        correctedSentence: null
+      })
+    );
+    expect(parsed).toEqual({
+      score: 4,
+      correct: true,
+      feedback: "Хорошее предложение, звучит естественно.",
+      correctedSentence: null
+    });
+  });
+
+  it("rejects long sentence check feedback", () => {
+    expect(() =>
+      parseSentenceCheck(
+        JSON.stringify({
+          score: 3,
+          correct: false,
+          feedback: "Это слишком длинный фидбэк который содержит намного больше двадцати слов и должен быть отклонен валидатором для компактного интерфейса без дополнительных объяснений грамматики",
+          correctedSentence: "I abandoned the plan."
+        })
+      )
     ).toThrow();
   });
 });
