@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CardActions } from "@/components/cards/card-actions";
-import { FlipRevealCard } from "@/components/cards/flip-reveal-card";
 import { StatusBadge } from "@/components/cards/status-badge";
 import { formatDateRu } from "@/lib/date";
 import type { GeneratedCardInput } from "@/lib/schemas";
@@ -51,18 +50,10 @@ export function CardTable({
               <CardActions card={card} decks={decks} />
             </div>
             <div className="mt-3">
-              <FlipRevealCard
-                front={
-                  <span>
-                    Показать перевод
-                    <span className="mt-1 block text-xs text-muted-foreground">Кликните, чтобы раскрыть значение</span>
-                  </span>
-                }
-                back={<span>{card.translations.join(", ")}</span>}
-                frontLabel="Значение"
-                backLabel="Перевод"
-                compact
-              />
+              <div className="rounded-lg border border-border bg-surface-elevated px-3 py-2">
+                <div className="text-xs font-semibold uppercase text-muted-foreground">Перевод</div>
+                <div className="mt-1 text-sm font-medium text-foreground">{card.translations.join(", ")}</div>
+              </div>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
               <div>
@@ -85,7 +76,7 @@ export function CardTable({
           <TableHeader>
             <TableRow>
               <TableHead>Слово</TableHead>
-              <TableHead>Значение</TableHead>
+              <TableHead>Перевод</TableHead>
               <TableHead>Статус</TableHead>
               <TableHead>Следующее повторение</TableHead>
               <TableHead>Создано</TableHead>
@@ -104,18 +95,9 @@ export function CardTable({
                   </div>
                 </TableCell>
                 <TableCell className="max-w-[260px]">
-                  <FlipRevealCard
-                    front={
-                      <span>
-                        Показать перевод
-                        <span className="mt-1 block text-xs text-muted-foreground">Клик для значения</span>
-                      </span>
-                    }
-                    back={<span className="line-clamp-2">{card.translations.join(", ")}</span>}
-                    frontLabel="Значение"
-                    backLabel="Перевод"
-                    compact
-                  />
+                  <span className="line-clamp-2 text-sm font-medium text-foreground">
+                    {card.translations.join(", ")}
+                  </span>
                 </TableCell>
                 <TableCell>
                   <StatusBadge state={card.state} />
