@@ -41,18 +41,43 @@ describe("OpenAI structured output parsing", () => {
   it("validates sentence check JSON", () => {
     const parsed = parseSentenceCheck(
       JSON.stringify({
-        score: 4,
+        score: 5,
         correct: true,
         feedback: "Хорошее предложение, звучит естественно.",
         correctedSentence: null
       })
     );
     expect(parsed).toEqual({
-      score: 4,
+      score: 5,
       correct: true,
       feedback: "Хорошее предложение, звучит естественно.",
       correctedSentence: null
     });
+  });
+
+  it("requires a corrected sentence for score 4", () => {
+    expect(() =>
+      parseSentenceCheck(
+        JSON.stringify({
+          score: 4,
+          correct: true,
+          feedback: "Есть небольшая ошибка.",
+          correctedSentence: null
+        })
+      )
+    ).toThrow();
+  });
+
+  it("accepts a corrected sentence for score 4", () => {
+    const parsed = parseSentenceCheck(
+      JSON.stringify({
+        score: 4,
+        correct: true,
+        feedback: "Почти правильно, лучше чуть естественнее.",
+        correctedSentence: "I abandoned the plan because it was too expensive."
+      })
+    );
+    expect(parsed.correctedSentence).toBe("I abandoned the plan because it was too expensive.");
   });
 
   it("rejects long sentence check feedback", () => {
@@ -74,7 +99,7 @@ describe("OpenAI structured output parsing", () => {
         score: 1,
         correct: true,
         feedback: "Правильно использовано слово.",
-        correctedSentence: null
+        correctedSentence: "I abandoned the plan."
       })
     );
     expect(parsed.score).toBe(4);

@@ -83,7 +83,17 @@ export const sentenceCheckResultSchema = z
     }),
     correctedSentence: z.string().trim().min(1).max(500).nullable().optional()
   })
-  .strict();
+  .strict()
+  .superRefine((value, ctx) => {
+    const effectiveScore = value.correct ? Math.max(4, value.score) : Math.min(3, value.score);
+    if (effectiveScore === 4 && !value.correctedSentence?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["correctedSentence"],
+        message: "Corrected sentence is required when score is 4"
+      });
+    }
+  });
 
 export const settingsSchema = z.object({
   newCardsPerDay: z.number().int().min(0).max(200),

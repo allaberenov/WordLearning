@@ -13,7 +13,15 @@ type SentenceCheckResult = {
   correctedSentence?: string | null;
 };
 
-export function SentenceChecker({ cardId, word }: { cardId: string; word: string }) {
+export function SentenceChecker({
+  cardId,
+  word,
+  onSuccessChange
+}: {
+  cardId: string;
+  word: string;
+  onSuccessChange?: (successful: boolean) => void;
+}) {
   const [sentence, setSentence] = useState("");
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState<SentenceCheckResult | null>(null);
@@ -21,12 +29,13 @@ export function SentenceChecker({ cardId, word }: { cardId: string; word: string
   const requestRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
+    onSuccessChange?.(false);
     return () => {
       const controller = requestRef.current;
       requestRef.current = null;
       controller?.abort();
     };
-  }, []);
+  }, [cardId, onSuccessChange]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -36,6 +45,7 @@ export function SentenceChecker({ cardId, word }: { cardId: string; word: string
     setChecking(true);
     setError(null);
     setResult(null);
+    onSuccessChange?.(false);
     requestRef.current?.abort();
     const controller = new AbortController();
     requestRef.current = controller;
@@ -50,12 +60,15 @@ export function SentenceChecker({ cardId, word }: { cardId: string; word: string
       const payload = await response.json();
       if (!response.ok) {
         setError(payload.error || "Не удалось проверить предложение.");
+        onSuccessChange?.(false);
         return;
       }
       setResult(payload.result);
+      onSuccessChange?.(Boolean(payload.result?.correct));
     } catch (caught) {
       if ((caught as Error).name !== "AbortError") {
         setError("Нет соединения с сервером.");
+        onSuccessChange?.(false);
       }
     } finally {
       if (requestRef.current === controller) {
@@ -78,6 +91,7 @@ export function SentenceChecker({ cardId, word }: { cardId: string; word: string
             setSentence(event.target.value);
             if (result) setResult(null);
             if (error) setError(null);
+            onSuccessChange?.(false);
           }}
           placeholder={`Например: I used "${word}" in a sentence.`}
           maxLength={500}
@@ -104,7 +118,7 @@ export function SentenceChecker({ cardId, word }: { cardId: string; word: string
       </div>
       {result?.correctedSentence ? (
         <div className="mt-2 rounded-md border border-border bg-background-secondary px-3 py-2 text-sm">
-          <span className="text-muted-foreground">Вариант: </span>
+          <span className="text-muted-foreground">{result.score === 4 ? "Лучше так: " : "Вариант: "}</span>
           <span className="font-medium">{result.correctedSentence}</span>
         </div>
       ) : null}
