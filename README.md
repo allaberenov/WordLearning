@@ -60,7 +60,7 @@ Dublind is a full-stack web application for learning and retaining English vocab
 
 Card generation is implemented in `src/lib/openai.ts`. The application supports these providers:
 
-- `AI_PROVIDER="groq"` - Groq OpenAI-compatible Chat Completions. Default model: `qwen/qwen3-32b`.
+- `AI_PROVIDER="groq"` - Groq OpenAI-compatible Chat Completions. Default model: `qwen/qwen3.6-27b`.
 - `AI_PROVIDER="gemini"` - Google Gemini `generateContent` API with JSON response schema.
 - `AI_PROVIDER="openai"` - OpenAI Responses API with strict JSON Schema structured output.
 - `AI_PROVIDER="ollama"` - local Ollama model, for example `qwen3:4b-instruct`.
@@ -76,11 +76,11 @@ AUTH_SECRET="replace-with-a-long-random-secret"
 AI_PROVIDER="groq"
 
 GROQ_API_KEY=""
-GROQ_MODEL="qwen/qwen3-32b"
+GROQ_MODEL="qwen/qwen3.6-27b"
 GROQ_BASE_URL="https://api.groq.com/openai/v1"
 GROQ_TIMEOUT_MS="20000"
 
-# Defaults match Groq qwen/qwen3-32b request limits: 60 RPM and 1000 RPD.
+# Defaults match Groq qwen/qwen3.6-27b request limits: 60 RPM and 1000 RPD.
 GENERATION_RATE_LIMIT_RPM="60"
 GENERATION_RATE_LIMIT_RPD="1000"
 

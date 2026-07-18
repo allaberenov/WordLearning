@@ -193,7 +193,8 @@ function getGroqBaseUrl() {
 }
 
 function getGroqModel() {
-  return process.env.GROQ_MODEL || "qwen/qwen3-32b";
+  const model = process.env.GROQ_MODEL || "qwen/qwen3.6-27b";
+  return model === "qwen/qwen3-32b" ? "qwen/qwen3.6-27b" : model;
 }
 
 function getProviderTimeoutMs() {
@@ -460,7 +461,10 @@ async function requestGroqGeneratedCard(input: string, signal: AbortSignal) {
       }
     });
   } catch (error) {
-    if (!(error instanceof ApiError) || error.code !== "GROQ_STRUCTURED_OUTPUT_UNSUPPORTED") {
+    const canFallback =
+      (error instanceof ApiError && error.code === "GROQ_STRUCTURED_OUTPUT_UNSUPPORTED") ||
+      error instanceof SyntaxError;
+    if (!canFallback) {
       throw error;
     }
 
@@ -585,7 +589,10 @@ async function requestGroqSentenceCheck(input: SentenceCheckInput, signal: Abort
       }
     });
   } catch (error) {
-    if (!(error instanceof ApiError) || error.code !== "GROQ_STRUCTURED_OUTPUT_UNSUPPORTED") {
+    const canFallback =
+      (error instanceof ApiError && error.code === "GROQ_STRUCTURED_OUTPUT_UNSUPPORTED") ||
+      error instanceof SyntaxError;
+    if (!canFallback) {
       throw error;
     }
 
