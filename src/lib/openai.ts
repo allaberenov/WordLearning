@@ -646,7 +646,6 @@ Return a single valid JSON object only. The response must be JSON.`;
         }
       ],
       response_format: responseFormat,
-      reasoning_format: "hidden",
       temperature: 0.1,
       max_tokens: 350
     })
