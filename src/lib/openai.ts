@@ -246,6 +246,7 @@ Rules:
 - score: 1 means wrong or target is missing; 2 mostly wrong; 3 partly correct; 4 correct with minor issues; 5 natural and correct.
 - correct is true only when the target word or expression is used with the intended meaning.
 - feedback must be one friendly Russian phrase, no more than 20 words.
+- Use neutral Russian wording like "Слово использовано правильно." Avoid "Вас" and long grammar explanations.
 - correctedSentence must be one corrected English sentence when useful; otherwise null.
 - Do not explain grammar rules. Do not add Markdown or prose outside JSON.
 `.trim();
