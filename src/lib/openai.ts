@@ -509,6 +509,7 @@ ${JSON.stringify(vocabularyCardJsonSchema)}
 Return a single valid JSON object only. Do not use Markdown or prose outside JSON.
 Use an empty string for transcription only if pronunciation is genuinely unknown.
 The response must be JSON.
+Reply immediately with the final JSON object. Do not include analysis, thinking, or explanations.
 The "translations" field must contain natural Russian translations only.
 Bad translation examples: "намерзший" for "reluctant", "намного" for "reluctant", adverbs for adjectives, rare literal calques.
 Bad idiom translation examples: "свалиться с колеса" for "fall off the wagon".
@@ -604,7 +605,7 @@ Good translation examples: "неохотный", "не желающий", "ск�
 
   const outputText = payload?.choices?.[0]?.message?.content?.trim() || "";
   if (!outputText) {
-    throw new Error("Groq returned an empty response.");
+    throw new SyntaxError("Groq returned an empty response.");
   }
   return parseGeneratedCard(outputText);
 }
@@ -646,7 +647,8 @@ async function requestGroqSentenceCheckWithFormat(
 JSON schema:
 ${JSON.stringify(sentenceCheckJsonSchema)}
 
-Return a single valid JSON object only. The response must be JSON.`;
+Return a single valid JSON object only. The response must be JSON.
+Reply immediately with the final JSON object. Do not include analysis, thinking, or explanations.`;
   const requestBody: Record<string, unknown> = {
     model,
     messages: [
@@ -660,7 +662,7 @@ Return a single valid JSON object only. The response must be JSON.`;
       }
     ],
     temperature: 0.1,
-    max_tokens: usesQwenGroqModel(model) ? 1600 : 350
+    max_tokens: usesQwenGroqModel(model) ? 2400 : 350
   };
 
   if (responseFormat) {
@@ -738,7 +740,7 @@ Return a single valid JSON object only. The response must be JSON.`;
 
   const outputText = payload?.choices?.[0]?.message?.content?.trim() || "";
   if (!outputText) {
-    throw new Error("Groq returned an empty sentence check response.");
+    throw new SyntaxError("Groq returned an empty sentence check response.");
   }
   return parseSentenceCheck(outputText);
 }
