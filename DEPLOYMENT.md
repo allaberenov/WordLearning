@@ -73,7 +73,8 @@ GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1beta
 GEMINI_TIMEOUT_MS=30000
 
 GROQ_API_KEY=
-GROQ_MODEL=qwen/qwen3-32b
+GROQ_MODEL=llama-3.3-70b-versatile
+GROQ_SENTENCE_MODEL=llama-3.1-8b-instant
 GROQ_BASE_URL=https://api.groq.com/openai/v1
 GROQ_TIMEOUT_MS=20000
 
@@ -255,7 +256,8 @@ GEMINI_BASE_URL=<GEMINI_BASE_URL>
 GEMINI_TIMEOUT_MS=<GEMINI_TIMEOUT_MS>
 
 GROQ_API_KEY=<GROQ_API_KEY>
-GROQ_MODEL=qwen/qwen3-32b
+GROQ_MODEL=llama-3.3-70b-versatile
+GROQ_SENTENCE_MODEL=llama-3.1-8b-instant
 GROQ_BASE_URL=https://api.groq.com/openai/v1
 GROQ_TIMEOUT_MS=20000
 
@@ -344,7 +346,8 @@ GEMINI_BASE_URL="https://generativelanguage.googleapis.com/v1beta"
 GEMINI_TIMEOUT_MS="30000"
 
 GROQ_API_KEY=""
-GROQ_MODEL="qwen/qwen3-32b"
+GROQ_MODEL="llama-3.3-70b-versatile"
+GROQ_SENTENCE_MODEL="llama-3.1-8b-instant"
 GROQ_BASE_URL="https://api.groq.com/openai/v1"
 GROQ_TIMEOUT_MS="20000"
 

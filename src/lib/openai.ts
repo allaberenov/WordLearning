@@ -193,8 +193,10 @@ function getGroqBaseUrl() {
 }
 
 function getGroqModel() {
-  const model = process.env.GROQ_MODEL || "qwen/qwen3.6-27b";
-  return model === "qwen/qwen3-32b" ? "qwen/qwen3.6-27b" : model;
+  const model = process.env.GROQ_MODEL?.trim() || "llama-3.3-70b-versatile";
+  return model === "qwen/qwen3-32b" || model === "qwen/qwen3.6-27b"
+    ? "llama-3.3-70b-versatile"
+    : model;
 }
 
 function getGroqSentenceModel() {
@@ -527,7 +529,6 @@ Good translation examples: "неохотный", "не желающий", "ск�
         }
       ],
       response_format: responseFormat,
-      reasoning_format: "hidden",
       temperature: 0.2,
       max_tokens: 1200
     })
