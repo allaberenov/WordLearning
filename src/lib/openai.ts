@@ -193,20 +193,16 @@ function getGroqBaseUrl() {
 }
 
 function getGroqModel() {
-  const model = process.env.GROQ_MODEL?.trim() || "llama-3.3-70b-versatile";
-  return model === "qwen/qwen3-32b" || model === "qwen/qwen3.6-27b"
-    ? "llama-3.3-70b-versatile"
-    : model;
+  const model = process.env.GROQ_MODEL?.trim() || "qwen/qwen3.6-27b";
+  return model === "qwen/qwen3-32b" ? "qwen/qwen3.6-27b" : model;
 }
 
 function getGroqSentenceModel() {
   const model = process.env.GROQ_SENTENCE_MODEL?.trim();
   if (model) {
-    return model === "qwen/qwen3-32b" || model.startsWith("qwen/")
-      ? "llama-3.1-8b-instant"
-      : model;
+    return model === "qwen/qwen3-32b" ? "qwen/qwen3.6-27b" : model;
   }
-  return getGroqModel().startsWith("qwen/") ? "llama-3.1-8b-instant" : getGroqModel();
+  return getGroqModel();
 }
 
 function getProviderTimeoutMs() {
@@ -469,7 +465,15 @@ type GroqResponseFormat =
     }
   | { type: "json_object" };
 
+function usesQwenGroqModel(model = getGroqModel()) {
+  return model.startsWith("qwen/");
+}
+
 async function requestGroqGeneratedCard(input: string, signal: AbortSignal) {
+  if (usesQwenGroqModel()) {
+    return requestGroqGeneratedCardWithFormat(input, signal);
+  }
+
   try {
     return await requestGroqGeneratedCardWithFormat(input, signal, {
       type: "json_schema",
@@ -494,8 +498,9 @@ async function requestGroqGeneratedCard(input: string, signal: AbortSignal) {
 async function requestGroqGeneratedCardWithFormat(
   input: string,
   signal: AbortSignal,
-  responseFormat: GroqResponseFormat
+  responseFormat?: GroqResponseFormat
 ) {
+  const model = getGroqModel();
   const groqSystemPrompt = `${systemPrompt}
 
 JSON schema:
@@ -508,6 +513,29 @@ The "translations" field must contain natural Russian translations only.
 Bad translation examples: "намерзший" for "reluctant", "намного" for "reluctant", adverbs for adjectives, rare literal calques.
 Bad idiom translation examples: "свалиться с колеса" for "fall off the wagon".
 Good translation examples: "неохотный", "не желающий", "склонный", "существенный", "поддерживать", "сорваться", "вернуться к вредной привычке".`;
+  const requestBody: Record<string, unknown> = {
+    model,
+    messages: [
+      {
+        role: "system",
+        content: groqSystemPrompt
+      },
+      {
+        role: "user",
+        content: `Create a vocabulary card for this English word or expression: ${input}`
+      }
+    ],
+    temperature: 0.2,
+    max_tokens: usesQwenGroqModel(model) ? 3000 : 1200
+  };
+
+  if (responseFormat) {
+    requestBody.response_format = responseFormat;
+  }
+
+  if (usesQwenGroqModel(model)) {
+    requestBody.reasoning_format = "hidden";
+  }
 
   const response = await fetch(`${getGroqBaseUrl()}/chat/completions`, {
     method: "POST",
@@ -516,22 +544,7 @@ Good translation examples: "неохотный", "не желающий", "ск�
       Authorization: `Bearer ${getGroqApiKey()}`
     },
     signal,
-    body: JSON.stringify({
-      model: getGroqModel(),
-      messages: [
-        {
-          role: "system",
-          content: groqSystemPrompt
-        },
-        {
-          role: "user",
-          content: `Create a vocabulary card for this English word or expression: ${input}`
-        }
-      ],
-      response_format: responseFormat,
-      temperature: 0.2,
-      max_tokens: 1200
-    })
+    body: JSON.stringify(requestBody)
   });
 
   const payload = (await response.json().catch(() => null)) as
@@ -548,7 +561,7 @@ Good translation examples: "неохотный", "не желающий", "ск�
   if (!response.ok) {
     const message = payload?.error?.message || "";
     const structuredUnsupported =
-      responseFormat.type === "json_schema" &&
+      responseFormat?.type === "json_schema" &&
       response.status === 400 &&
       /json_schema|structured|response_format/i.test(message);
 
@@ -597,6 +610,10 @@ Good translation examples: "неохотный", "не желающий", "ск�
 }
 
 async function requestGroqSentenceCheck(input: SentenceCheckInput, signal: AbortSignal) {
+  if (usesQwenGroqModel(getGroqSentenceModel())) {
+    return requestGroqSentenceCheckWithFormat(input, signal);
+  }
+
   try {
     return await requestGroqSentenceCheckWithFormat(input, signal, {
       type: "json_schema",
@@ -621,14 +638,38 @@ async function requestGroqSentenceCheck(input: SentenceCheckInput, signal: Abort
 async function requestGroqSentenceCheckWithFormat(
   input: SentenceCheckInput,
   signal: AbortSignal,
-  responseFormat: GroqResponseFormat
+  responseFormat?: GroqResponseFormat
 ) {
+  const model = getGroqSentenceModel();
   const groqSystemPrompt = `${sentenceCheckPrompt}
 
 JSON schema:
 ${JSON.stringify(sentenceCheckJsonSchema)}
 
 Return a single valid JSON object only. The response must be JSON.`;
+  const requestBody: Record<string, unknown> = {
+    model,
+    messages: [
+      {
+        role: "system",
+        content: groqSystemPrompt
+      },
+      {
+        role: "user",
+        content: buildSentenceCheckUserPrompt(input)
+      }
+    ],
+    temperature: 0.1,
+    max_tokens: usesQwenGroqModel(model) ? 1600 : 350
+  };
+
+  if (responseFormat) {
+    requestBody.response_format = responseFormat;
+  }
+
+  if (usesQwenGroqModel(model)) {
+    requestBody.reasoning_format = "hidden";
+  }
 
   const response = await fetch(`${getGroqBaseUrl()}/chat/completions`, {
     method: "POST",
@@ -637,22 +678,7 @@ Return a single valid JSON object only. The response must be JSON.`;
       Authorization: `Bearer ${getGroqApiKey()}`
     },
     signal,
-    body: JSON.stringify({
-      model: getGroqSentenceModel(),
-      messages: [
-        {
-          role: "system",
-          content: groqSystemPrompt
-        },
-        {
-          role: "user",
-          content: buildSentenceCheckUserPrompt(input)
-        }
-      ],
-      response_format: responseFormat,
-      temperature: 0.1,
-      max_tokens: 350
-    })
+    body: JSON.stringify(requestBody)
   });
 
   const payload = (await response.json().catch(() => null)) as
@@ -669,7 +695,7 @@ Return a single valid JSON object only. The response must be JSON.`;
   if (!response.ok) {
     const message = payload?.error?.message || "";
     const structuredUnsupported =
-      responseFormat.type === "json_schema" &&
+      responseFormat?.type === "json_schema" &&
       response.status === 400 &&
       /json_schema|structured|response_format/i.test(message);
 
