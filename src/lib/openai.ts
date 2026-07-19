@@ -202,7 +202,7 @@ function getGroqSentenceModel() {
   if (model) {
     return model === "qwen/qwen3-32b" ? "qwen/qwen3.6-27b" : model;
   }
-  return getGroqModel();
+  return "llama-3.1-8b-instant";
 }
 
 function getProviderTimeoutMs() {
