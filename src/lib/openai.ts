@@ -642,7 +642,23 @@ async function requestGroqSentenceCheckWithFormat(
   responseFormat?: GroqResponseFormat
 ) {
   const model = getGroqSentenceModel();
-  const groqSystemPrompt = `${sentenceCheckPrompt}
+  const qwenSentencePrompt = `Evaluate one learner-written English sentence for a Russian-speaking English learner.
+Return only one valid JSON object with exactly these keys:
+{"score":1,"correct":false,"feedback":"short Russian feedback","correctedSentence":null}
+
+Rules:
+- score is an integer from 1 to 5.
+- 1 means wrong or target is missing; 2 mostly wrong; 3 partly correct; 4 correct with minor issues; 5 natural and correct.
+- correct is true only when the target word or expression is used with the intended meaning and part of speech.
+- feedback must be one friendly Russian phrase, no more than 20 words.
+- If score is 4, correctedSentence must be one corrected or more natural English sentence.
+- If score is 5, correctedSentence may be null.
+- For scores 1-3, correctedSentence may be one useful corrected English sentence or null.
+- Do not add Markdown, explanations, grammar rules, or extra keys.
+- Reply immediately with JSON.`;
+  const groqSystemPrompt = usesQwenGroqModel(model)
+    ? qwenSentencePrompt
+    : `${sentenceCheckPrompt}
 
 JSON schema:
 ${JSON.stringify(sentenceCheckJsonSchema)}
@@ -662,7 +678,7 @@ Reply immediately with the final JSON object. Do not include analysis, thinking,
       }
     ],
     temperature: 0.1,
-    max_tokens: usesQwenGroqModel(model) ? 2400 : 350
+    max_tokens: usesQwenGroqModel(model) ? 3200 : 350
   };
 
   if (responseFormat) {
