@@ -8,14 +8,15 @@ import {
   CircleUserRound,
   LogOut,
   Repeat2,
-  Settings
+  Settings,
+  ShieldCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/providers/toast-provider";
 
-const navItems = [
+const baseNavItems = [
   { href: "/decks", label: "Наборы", icon: BookOpen },
   { href: "/review", label: "Повторение", icon: Repeat2 },
   { href: "/stats", label: "Статистика", icon: BarChart3 },
@@ -28,11 +29,14 @@ export function AppShell({
   user
 }: {
   children: React.ReactNode;
-  user: { email: string; name: string | null };
+  user: { email: string; name: string | null; isAdmin?: boolean };
 }) {
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
+  const navItems = user.isAdmin
+    ? [...baseNavItems, { href: "/admin", label: "Админ", icon: ShieldCheck }]
+    : baseNavItems;
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -84,7 +88,7 @@ export function AppShell({
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:py-8">{children}</main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-border bg-card md:hidden">
+      <nav className={cn("fixed inset-x-0 bottom-0 z-40 grid border-t border-border bg-card md:hidden", user.isAdmin ? "grid-cols-6" : "grid-cols-5")}>
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);

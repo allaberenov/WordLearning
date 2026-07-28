@@ -129,6 +129,7 @@ jobs:
           POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+          ADMIN_EMAILS: ${{ vars.ADMIN_EMAILS }}
           AI_PROVIDER: ${{ secrets.AI_PROVIDER }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
@@ -163,6 +164,7 @@ jobs:
             printf 'POSTGRES_PASSWORD=%s\n' "$POSTGRES_PASSWORD"
             printf '\n'
             printf 'AUTH_SECRET=%s\n' "$AUTH_SECRET"
+            printf 'ADMIN_EMAILS=%s\n' "${ADMIN_EMAILS:-}"
             printf '\n'
             printf 'AI_PROVIDER=%s\n' "${AI_PROVIDER:-gemini}"
             printf 'GEMINI_API_KEY=%s\n' "$GEMINI_API_KEY"

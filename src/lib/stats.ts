@@ -63,6 +63,7 @@ export async function getStats(userId: string, timezone: string, deckId?: string
     incorrectToday,
     statusGroups,
     activityReviews,
+    activityCards,
     forecastCards,
     allReviewDates
   ] = await Promise.all([
@@ -95,8 +96,15 @@ export async function getStats(userId: string, timezone: string, deckId?: string
         ...reviewWhere,
         reviewedAt: { gte: thirtyDaysStart, lte: todayEnd }
       },
-      select: { reviewedAt: true },
+      select: { reviewedAt: true, rating: true, previousState: true, nextState: true },
       orderBy: { reviewedAt: "asc" }
+    }),
+    prisma.card.findMany({
+      where: {
+        ...cardWhere,
+        createdAt: { gte: thirtyDaysStart, lte: todayEnd }
+      },
+      select: { createdAt: true }
     }),
     prisma.card.findMany({
       where: {
@@ -123,13 +131,49 @@ export async function getStats(userId: string, timezone: string, deckId?: string
     statusCounts[group.state] = group._count._all;
   }
 
-  const activityMap = new Map<string, number>();
+  const activityMap = new Map<
+    string,
+    {
+      date: string;
+      count: number;
+      newCards: number;
+      reviews: number;
+      learned: number;
+      correct: number;
+      incorrect: number;
+    }
+  >();
   for (let i = 0; i < 30; i += 1) {
-    activityMap.set(getDateKey(addDays(thirtyDaysStart, i), timezone), 0);
+    const date = getDateKey(addDays(thirtyDaysStart, i), timezone);
+    activityMap.set(date, {
+      date,
+      count: 0,
+      newCards: 0,
+      reviews: 0,
+      learned: 0,
+      correct: 0,
+      incorrect: 0
+    });
+  }
+  for (const card of activityCards) {
+    const key = getDateKey(card.createdAt, timezone);
+    const day = activityMap.get(key);
+    if (!day) continue;
+    day.newCards += 1;
+    day.count += 1;
   }
   for (const review of activityReviews) {
     const key = getDateKey(review.reviewedAt, timezone);
-    activityMap.set(key, (activityMap.get(key) ?? 0) + 1);
+    const day = activityMap.get(key);
+    if (!day) continue;
+    day.reviews += 1;
+    day.count += 1;
+    if (review.rating === "GOOD" || review.rating === "EASY") day.correct += 1;
+    if (review.rating === "AGAIN" || review.rating === "HARD") day.incorrect += 1;
+    if (review.nextState === "MATURE" && review.previousState !== "MATURE") {
+      day.learned += 1;
+      day.count += 1;
+    }
   }
 
   const forecastMap = new Map<string, number>();
@@ -140,6 +184,18 @@ export async function getStats(userId: string, timezone: string, deckId?: string
     const key = getDateKey(card.dueAt, timezone);
     forecastMap.set(key, (forecastMap.get(key) ?? 0) + 1);
   }
+
+  const activity = [...activityMap.values()];
+  const activityTotals = activity.reduce(
+    (totals, day) => ({
+      newCards: totals.newCards + day.newCards,
+      reviews: totals.reviews + day.reviews,
+      learned: totals.learned + day.learned,
+      correct: totals.correct + day.correct,
+      incorrect: totals.incorrect + day.incorrect
+    }),
+    { newCards: 0, reviews: 0, learned: 0, correct: 0, incorrect: 0 }
+  );
 
   const totalRated = correctToday + incorrectToday;
   const retention = totalRated > 0 ? Math.round((correctToday / totalRated) * 100) : 0;
@@ -156,7 +212,8 @@ export async function getStats(userId: string, timezone: string, deckId?: string
     incorrectToday,
     retention,
     statusCounts,
-    activity: [...activityMap.entries()].map(([date, count]) => ({ date, count })),
+    activity,
+    activityTotals,
     forecast: [...forecastMap.entries()].map(([date, count]) => ({ date, count })),
     ...streaks
   };

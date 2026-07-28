@@ -89,7 +89,7 @@ describe("Groq generation cache and retry behavior", () => {
   });
 
   it("returns cached cards without calling Groq", async () => {
-    generatedWordCache.findUnique.mockResolvedValueOnce({ payload: validCard });
+    generatedWordCache.findUnique.mockResolvedValueOnce({ payload: { ...validCard, cacheVersion: 2 } });
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
@@ -100,6 +100,20 @@ describe("Groq generation cache and retry behavior", () => {
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(generatedWordCache.upsert).not.toHaveBeenCalled();
+  });
+
+  it("treats old generated cache entries as stale", async () => {
+    generatedWordCache.findUnique.mockResolvedValue({ payload: validCard });
+    generatedWordCache.upsert.mockResolvedValue({});
+    const fetchMock = vi.fn().mockResolvedValue(groqSuccessResponse());
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { generateVocabularyCard } = await import("@/lib/openai");
+    await expect(generateVocabularyCard("abandon")).resolves.toMatchObject({
+      normalizedWord: "abandon"
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("deduplicates parallel requests for the same normalized word", async () => {

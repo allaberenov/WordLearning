@@ -72,6 +72,7 @@ Relevant environment variables:
 ```env
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/word_learning?schema=public"
 AUTH_SECRET="replace-with-a-long-random-secret"
+ADMIN_EMAILS=""
 
 AI_PROVIDER="groq"
 

@@ -73,7 +73,7 @@ export default async function CardPage({ params }: { params: Promise<{ cardId: s
                 front={<span>{card.definitionEn}</span>}
                 back={<span>{card.translations.join(", ")}</span>}
                 frontLabel="Definition"
-                backLabel="Значение"
+                backLabel="Перевод"
               />
             </div>
             <section className="space-y-3">

@@ -1,10 +1,14 @@
+import Link from "next/link";
 import { Mail, UserRound } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { isAdminEmail } from "@/lib/admin";
 import { requireUser } from "@/lib/auth";
 import { formatDateRu } from "@/lib/date";
 
 export default async function ProfilePage() {
   const user = await requireUser();
+  const isAdmin = isAdminEmail(user.email);
 
   return (
     <div className="space-y-6">
@@ -35,6 +39,19 @@ export default async function ProfilePage() {
             <div className="text-sm text-muted-foreground">Создан</div>
             <div className="font-medium">{formatDateRu(user.createdAt)}</div>
           </div>
+          {isAdmin ? (
+            <div className="rounded-md border border-primary/30 bg-primary/10 p-3">
+              <div className="text-sm text-muted-foreground">Администрирование</div>
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+                <div className="text-sm text-foreground-secondary">
+                  Доступ к пользователям, наборам и активности приложения.
+                </div>
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/admin">Открыть админку</Link>
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </div>

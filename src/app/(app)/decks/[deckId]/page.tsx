@@ -38,6 +38,13 @@ function normalizeExamples(value: unknown): GeneratedCardInput["examples"] {
   ];
 }
 
+function paginationItems(currentPage: number, totalPages: number) {
+  const pages = new Set([1, totalPages, currentPage - 1, currentPage, currentPage + 1]);
+  return [...pages]
+    .filter((page) => page >= 1 && page <= totalPages)
+    .sort((a, b) => a - b);
+}
+
 export default async function DeckPage({
   params,
   searchParams
@@ -88,6 +95,18 @@ export default async function DeckPage({
     { label: "Просрочены", value: data.overdueCount, icon: BookOpen, tone: "text-destructive bg-destructive/10" },
     { label: cardStateLabels.MATURE, value: data.stateCounts.MATURE, icon: GraduationCap, tone: "text-success bg-success/10" }
   ];
+  const { pagination } = data;
+  const pageStart =
+    pagination.totalItems === 0 ? 0 : (pagination.page - 1) * pagination.pageSize + 1;
+  const pageEnd = Math.min(pagination.totalItems, pagination.page * pagination.pageSize);
+
+  function pageHref(page: number) {
+    const nextParams = new URLSearchParams(urlParams.toString());
+    if (page <= 1) nextParams.delete("page");
+    else nextParams.set("page", String(page));
+    const query = nextParams.toString();
+    return query ? `?${query}` : `/decks/${data.deck.id}`;
+  }
 
   return (
     <div className="space-y-6">
@@ -137,6 +156,50 @@ export default async function DeckPage({
         cards={cards}
         decks={decks}
       />
+      {pagination.totalItems > 0 ? (
+        <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            Показаны {pageStart}–{pageEnd} из {pagination.totalItems}. По {pagination.pageSize} карточек на странице.
+          </div>
+          {pagination.totalPages > 1 ? (
+            <div className="flex flex-wrap gap-2">
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className={pagination.page <= 1 ? "pointer-events-none opacity-50" : undefined}
+                aria-disabled={pagination.page <= 1}
+              >
+                <Link href={pageHref(Math.max(1, pagination.page - 1))}>Назад</Link>
+              </Button>
+              {paginationItems(pagination.page, pagination.totalPages).map((page, index, pages) => (
+                <div key={page} className="flex items-center gap-2">
+                  {index > 0 && page - pages[index - 1] > 1 ? (
+                    <span className="px-1 text-muted-foreground">…</span>
+                  ) : null}
+                  <Button
+                    asChild
+                    variant={page === pagination.page ? "primary" : "outline"}
+                    size="sm"
+                    aria-current={page === pagination.page ? "page" : undefined}
+                  >
+                    <Link href={pageHref(page)}>{page}</Link>
+                  </Button>
+                </div>
+              ))}
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className={pagination.page >= pagination.totalPages ? "pointer-events-none opacity-50" : undefined}
+                aria-disabled={pagination.page >= pagination.totalPages}
+              >
+                <Link href={pageHref(Math.min(pagination.totalPages, pagination.page + 1))}>Вперёд</Link>
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

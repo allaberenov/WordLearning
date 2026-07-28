@@ -65,6 +65,7 @@ POSTGRES_USER=word_learning
 POSTGRES_PASSWORD=use-a-long-random-password
 
 AUTH_SECRET=output-from-openssl-rand-base64-32
+ADMIN_EMAILS=your-admin-email@example.com
 
 AI_PROVIDER=gemini
 GEMINI_API_KEY=your-new-gemini-api-key
@@ -189,6 +190,7 @@ Required repository variables:
 VPS_HOST
 VPS_USER
 VPS_APP_DIR
+ADMIN_EMAILS
 GEMINI_BASE_URL
 GEMINI_MODEL
 GEMINI_TIMEOUT_MS
@@ -259,6 +261,7 @@ POSTGRES_USER=<POSTGRES_USER>
 POSTGRES_PASSWORD=<POSTGRES_PASSWORD>
 
 AUTH_SECRET=<AUTH_SECRET>
+ADMIN_EMAILS=<ADMIN_EMAILS>
 
 AI_PROVIDER=gemini
 GEMINI_API_KEY=<GEMINI_API_KEY>
@@ -282,6 +285,12 @@ GENERATION_RATE_LIMIT_RPD=200
 
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-4o-mini
+```
+
+`ADMIN_EMAILS` is a comma-separated allowlist. Example:
+
+```env
+ADMIN_EMAILS=your-admin-email@example.com,second-admin@example.com
 ```
 
 ### Groq Rate Limits
@@ -378,6 +387,7 @@ Set these in the hosting provider dashboard:
 ```env
 DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DATABASE?sslmode=require"
 AUTH_SECRET="generate-a-long-random-secret"
+ADMIN_EMAILS="your-admin-email@example.com"
 
 AI_PROVIDER="gemini"
 GEMINI_API_KEY="your-production-gemini-key"

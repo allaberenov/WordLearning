@@ -2,8 +2,10 @@ import { Prisma } from "@prisma/client";
 import { ApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { endOfDayInTimeZone } from "@/lib/date";
+import { safeInt } from "@/lib/utils";
 
 export type DeckSort = "name" | "createdAt" | "lastActivity";
+const DECK_CARDS_PAGE_SIZE = 50;
 
 function deckOrderBy(sort: DeckSort): Prisma.DeckOrderByWithRelationInput[] {
   if (sort === "name") return [{ name: "asc" }];
@@ -78,6 +80,7 @@ export async function getDeckPageData(
   const deck = await assertDeckOwner(userId, deckId);
   const query = searchParams.get("q")?.trim() ?? "";
   const state = searchParams.get("state")?.trim() ?? "all";
+  const requestedPage = safeInt(searchParams.get("page"), 1, 1, 10_000);
 
   const where: Prisma.CardWhereInput = {
     deckId,
@@ -95,12 +98,16 @@ export async function getDeckPageData(
 
   const now = new Date();
   const todayEnd = endOfDayInTimeZone(now, timezone);
-  const [cards, totalCards, stateGroups, overdueCount, dueTodayCount] = await Promise.all([
+  const totalFilteredCards = await prisma.card.count({ where });
+  const totalPages = Math.max(1, Math.ceil(totalFilteredCards / DECK_CARDS_PAGE_SIZE));
+  const page = Math.min(requestedPage, totalPages);
+  const [cards, stateGroups, overdueCount, dueTodayCount] = await Promise.all([
     prisma.card.findMany({
       where,
-      orderBy: [{ dueAt: "asc" }, { createdAt: "desc" }]
+      orderBy: [{ dueAt: "asc" }, { createdAt: "desc" }],
+      skip: (page - 1) * DECK_CARDS_PAGE_SIZE,
+      take: DECK_CARDS_PAGE_SIZE
     }),
-    prisma.card.count({ where }),
     prisma.card.groupBy({
       by: ["state"],
       where: { deckId },
@@ -128,9 +135,15 @@ export async function getDeckPageData(
   return {
     deck,
     cards,
-    totalCards,
+    totalCards: totalFilteredCards,
     stateCounts,
     overdueCount,
-    dueTodayCount
+    dueTodayCount,
+    pagination: {
+      page,
+      pageSize: DECK_CARDS_PAGE_SIZE,
+      totalItems: totalFilteredCards,
+      totalPages
+    }
   };
 }

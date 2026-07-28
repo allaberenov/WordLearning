@@ -12,10 +12,14 @@ export function DeckFilters() {
   const state = searchParams.get("state") || "all";
 
   useEffect(() => {
+    const currentQuery = searchParams.get("q") || "";
+    if (query.trim() === currentQuery) return;
+
     const id = window.setTimeout(() => {
       const params = new URLSearchParams(searchParams.toString());
       if (query.trim()) params.set("q", query.trim());
       else params.delete("q");
+      params.delete("page");
       router.push(`?${params.toString()}`);
     }, 350);
     return () => window.clearTimeout(id);
@@ -25,6 +29,7 @@ export function DeckFilters() {
     const params = new URLSearchParams(searchParams.toString());
     if (value === "all") params.delete("state");
     else params.set("state", value);
+    params.delete("page");
     router.push(`?${params.toString()}`);
   }
 

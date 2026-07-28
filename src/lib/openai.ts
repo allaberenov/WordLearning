@@ -18,6 +18,8 @@ import {
 } from "@/lib/schemas";
 import { normalizeWord } from "@/lib/utils";
 
+const GENERATED_CARD_CACHE_VERSION = 2;
+
 export const vocabularyCardJsonSchema = {
   type: "object",
   additionalProperties: false,
@@ -237,6 +239,8 @@ Rules:
 - Provide exactly two examples.
 - Russian translations must fit the concrete meaning and avoid rare, archaic wording.
 - Russian translations must match the part of speech: adjectives as adjectives, verbs as infinitives, nouns as nouns.
+- The translations field must translate the selected meaning/definition, not unrelated dictionary senses of the word.
+- All translations, definition, and examples must describe the same meaning.
 - Avoid unnatural Russian participles or adverbs when a common dictionary equivalent exists.
 - For idioms and fixed expressions, translate the idiomatic meaning, never the literal words.
 - For "fall off the wagon", use meanings like "сорваться" or "вернуться к вредной привычке"; never use a literal phrase like "свалиться с колеса".
@@ -497,6 +501,8 @@ Rules:
 - Choose the most common meaning for polysemous words.
 - Use simple English in definitionEn and avoid the target word when possible.
 - Russian translations must be natural, common, and match the part of speech.
+- Russian translations must translate the selected meaning/definition, not unrelated dictionary senses.
+- Keep translations, definition, examples, and example translations consistent with the same meaning.
 - Translate idioms by meaning, not literally; "fall off the wagon" means "сорваться" or "вернуться к вредной привычке".
 - Examples must be natural, grammatical, match the part of speech, and show two different contexts.
 - Do not add Markdown, comments, explanations, analysis, or extra keys.
@@ -1170,12 +1176,27 @@ export async function getCachedVocabularyCard(input: string) {
   });
 
   if (cached) {
+    const payload = cached.payload;
+    const cacheVersion =
+      payload && typeof payload === "object" && !Array.isArray(payload) && "cacheVersion" in payload
+        ? Number((payload as { cacheVersion?: unknown }).cacheVersion)
+        : null;
+    if (cacheVersion !== GENERATED_CARD_CACHE_VERSION) {
+      console.info("Vocabulary generation cache stale", {
+        provider: getProvider(),
+        normalizedWord: normalizedInput,
+        cacheHit: true,
+        cacheVersion
+      });
+      return null;
+    }
+
     console.info("Vocabulary generation cache hit", {
       provider: getProvider(),
       normalizedWord: normalizedInput,
       cacheHit: true
     });
-    return generatedCardSchema.parse(cached.payload);
+    return generatedCardSchema.parse(payload);
   }
 
   return null;
@@ -1191,18 +1212,19 @@ async function generateVocabularyCardFromProvider(input: string, normalizedInput
       const card = await requestGeneratedCard(input, controller.signal, attempt + 1);
       const normalizedWord = normalizeWord(card.normalizedWord || card.word);
       const payload = { ...card, normalizedWord };
+      const cachePayload = { ...payload, cacheVersion: GENERATED_CARD_CACHE_VERSION };
 
       await prisma.generatedWordCache.upsert({
         where: { normalizedWord },
-        update: { payload },
-        create: { normalizedWord, payload }
+        update: { payload: cachePayload },
+        create: { normalizedWord, payload: cachePayload }
       });
 
       if (normalizedWord !== normalizedInput) {
         await prisma.generatedWordCache.upsert({
           where: { normalizedWord: normalizedInput },
-          update: { payload },
-          create: { normalizedWord: normalizedInput, payload }
+          update: { payload: cachePayload },
+          create: { normalizedWord: normalizedInput, payload: cachePayload }
         });
       }
 

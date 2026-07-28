@@ -1,4 +1,5 @@
 import { BarChart3, Check, Flame, GraduationCap, RotateCcw, TrendingUp, X } from "lucide-react";
+import { ActivityBreakdownChart } from "@/components/stats/activity-breakdown-chart";
 import { StatsDeckSelect } from "@/components/stats/stats-deck-select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProgressBar } from "@/components/ui/progress-bar";
@@ -6,13 +7,6 @@ import { requireUser } from "@/lib/auth";
 import { getStats } from "@/lib/stats";
 import { prisma } from "@/lib/prisma";
 import { cardStateLabels } from "@/lib/labels";
-
-function intensity(count: number) {
-  if (count === 0) return "bg-background-secondary";
-  if (count < 3) return "bg-blue-soft";
-  if (count < 7) return "bg-primary/50";
-  return "bg-primary";
-}
 
 export default async function StatsPage({
   searchParams
@@ -69,26 +63,9 @@ export default async function StatsPage({
         })}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
-        <Card>
-          <CardHeader>
-            <CardTitle>Активность за 30 дней</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-[repeat(10,minmax(0,1fr))] gap-2 md:grid-cols-[repeat(15,minmax(0,1fr))]">
-              {stats.activity.map((day) => (
-                <div key={day.date} className="space-y-1">
-                  <div
-                    className={`h-8 rounded-md ${intensity(day.count)}`}
-                    title={`${day.date}: ${day.count}`}
-                  />
-                  <div className="truncate text-[10px] text-muted-foreground">{day.date.slice(5)}</div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      <ActivityBreakdownChart activity={stats.activity} totals={stats.activityTotals} />
 
+      <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
         <Card>
           <CardHeader>
             <CardTitle>Статусы карточек</CardTitle>

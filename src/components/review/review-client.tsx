@@ -225,7 +225,7 @@ export function ReviewClient({
                   front={<span>{card.definitionEn}</span>}
                   back={<span>{card.translations.join(", ")}</span>}
                   frontLabel="Definition"
-                  backLabel="Значение"
+                  backLabel="Перевод"
                   className="text-left"
                 />
               </div>
