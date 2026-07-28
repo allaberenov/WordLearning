@@ -1,5 +1,13 @@
+import { randomUUID } from "node:crypto";
 import OpenAI, { APIConnectionError, APIConnectionTimeoutError, APIError } from "openai";
 import { ZodError } from "zod";
+import { requireGroqGlobalRateLimit, runWithGroqQueue, type GroqOperation } from "@/lib/ai/groq-limiter";
+import {
+  buildGroqRateLimitMessage,
+  parseGroqRateLimitHeaders,
+  toPublicGroqRateLimitDetails,
+  type ProviderRateLimitDetails
+} from "@/lib/ai/rate-limit-headers";
 import { prisma } from "@/lib/prisma";
 import { ApiError } from "@/lib/api";
 import {
@@ -353,7 +361,7 @@ type SentenceCheckInput = {
   sentence: string;
 };
 
-async function requestGeneratedCard(input: string, signal: AbortSignal) {
+async function requestGeneratedCard(input: string, signal: AbortSignal, attempt = 1) {
   if (getProvider() === "ollama") {
     return requestOllamaGeneratedCard(input, signal);
   }
@@ -363,7 +371,7 @@ async function requestGeneratedCard(input: string, signal: AbortSignal) {
   }
 
   if (getProvider() === "groq") {
-    return requestGroqGeneratedCard(input, signal);
+    return requestGroqGeneratedCard(input, signal, attempt);
   }
 
   const client = getClient();
@@ -407,7 +415,7 @@ function buildSentenceCheckUserPrompt(input: SentenceCheckInput) {
   ].join("\n");
 }
 
-async function requestSentenceCheck(input: SentenceCheckInput, signal: AbortSignal) {
+async function requestSentenceCheck(input: SentenceCheckInput, signal: AbortSignal, attempt = 1) {
   if (getProvider() === "ollama") {
     return requestOllamaSentenceCheck(input, signal);
   }
@@ -417,7 +425,7 @@ async function requestSentenceCheck(input: SentenceCheckInput, signal: AbortSign
   }
 
   if (getProvider() === "groq") {
-    return requestGroqSentenceCheck(input, signal);
+    return requestGroqSentenceCheck(input, signal, attempt);
   }
 
   const client = getClient();
@@ -469,57 +477,161 @@ function usesQwenGroqModel(model = getGroqModel()) {
   return model.startsWith("qwen/");
 }
 
-async function requestGroqGeneratedCard(input: string, signal: AbortSignal) {
-  if (usesQwenGroqModel()) {
-    return requestGroqGeneratedCardWithFormat(input, signal);
-  }
+function supportsGroqJsonSchema(model: string) {
+  const normalized = model.toLowerCase();
+  return !usesQwenGroqModel(model) && !normalized.includes("llama-3.1-8b-instant");
+}
+
+function supportsGroqReasoningEffortNone(model: string) {
+  return usesQwenGroqModel(model);
+}
+
+function getGroqGeneratedCardPrompt() {
+  return `
+Create vocabulary cards for Russian-speaking learners of English.
+Return only one valid JSON object with these keys:
+word, normalizedWord, partOfSpeech, transcription, translations, definitionEn, examples.
+examples must contain exactly two objects with en and ru.
+Rules:
+- Correct small spelling mistakes and treat fixed expressions as one expression.
+- Choose the most common meaning for polysemous words.
+- Use simple English in definitionEn and avoid the target word when possible.
+- Russian translations must be natural, common, and match the part of speech.
+- Translate idioms by meaning, not literally; "fall off the wagon" means "сорваться" or "вернуться к вредной привычке".
+- Examples must be natural, grammatical, match the part of speech, and show two different contexts.
+- Do not add Markdown, comments, explanations, analysis, or extra keys.
+`.trim();
+}
+
+function getGroqSentenceCheckPrompt() {
+  return `
+Evaluate one learner-written English sentence for a Russian-speaking English learner.
+Return only one valid JSON object with keys: score, correct, feedback, correctedSentence.
+Rules:
+- score is an integer from 1 to 5: 1 wrong/missing target, 2 mostly wrong, 3 partly correct, 4 correct with minor issues, 5 natural and correct.
+- correct is true only when the target word or expression matches the intended meaning and part of speech.
+- feedback must be one friendly Russian phrase, no more than 20 words.
+- score 4 must include one corrected or more natural English sentence.
+- score 5 may use correctedSentence null.
+- scores 1-3 may include one useful corrected sentence or null.
+- Do not explain grammar rules and do not add Markdown or extra keys.
+`.trim();
+}
+
+type GroqCompletionPayload = {
+  choices?: Array<{
+    message?: { content?: string };
+    finish_reason?: string;
+  }>;
+  error?: { code?: string; type?: string; message?: string; failed_generation?: string };
+  failed_generation?: string;
+};
+
+function buildGroqRateLimitError(details: ProviderRateLimitDetails) {
+  return new ApiError(
+    429,
+    buildGroqRateLimitMessage(details),
+    "GROQ_RATE_LIMITED",
+    toPublicGroqRateLimitDetails(details)
+  );
+}
+
+async function requestGroqCompletion(
+  operation: GroqOperation,
+  model: string,
+  requestBody: Record<string, unknown>,
+  signal: AbortSignal,
+  metadata: { requestId: string; attempt: number; normalizedWord?: string; sentenceLength?: number }
+) {
+  const apiKey = getGroqApiKey();
+  const startedAt = Date.now();
+  const response = await runWithGroqQueue(operation, signal, () => {
+    requireGroqGlobalRateLimit(operation);
+    return fetch(`${getGroqBaseUrl()}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`
+      },
+      signal,
+      body: JSON.stringify(requestBody)
+    });
+  }).catch((error: unknown) => {
+    if (error instanceof ApiError) throw error;
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new ApiError(504, "Groq не ответил вовремя. Попробуйте еще раз.", "GROQ_TIMEOUT");
+    }
+    throw error;
+  });
+
+  const payload = (await response.json().catch(() => null)) as GroqCompletionPayload | null;
+  const providerMessage = payload?.error?.message || null;
+  const rateLimitDetails = parseGroqRateLimitHeaders(response.headers, providerMessage);
+
+  console.info("Groq provider request", {
+    provider: "groq",
+    model,
+    operation,
+    requestId: metadata.requestId,
+    attempt: metadata.attempt,
+    durationMs: Date.now() - startedAt,
+    httpStatus: response.status,
+    finishReason: payload?.choices?.[0]?.finish_reason,
+    rateLimit: {
+      limitType: rateLimitDetails.limitType,
+      retryAfterSeconds: rateLimitDetails.retryAfterSeconds,
+      remainingRequests: rateLimitDetails.remainingRequests,
+      remainingTokens: rateLimitDetails.remainingTokens,
+      resetRequests: rateLimitDetails.resetRequests,
+      resetTokens: rateLimitDetails.resetTokens
+    },
+    normalizedWord: metadata.normalizedWord,
+    sentenceLength: metadata.sentenceLength
+  });
+
+  return { response, payload, rateLimitDetails };
+}
+
+async function requestGroqGeneratedCard(input: string, signal: AbortSignal, attempt: number) {
+  const model = getGroqModel();
+  const responseFormat: GroqResponseFormat = supportsGroqJsonSchema(model)
+    ? {
+        type: "json_schema",
+        json_schema: {
+          name: "vocabulary_card",
+          schema: vocabularyCardJsonSchema,
+          strict: true
+        }
+      }
+    : { type: "json_object" };
 
   try {
-    return await requestGroqGeneratedCardWithFormat(input, signal, {
-      type: "json_schema",
-      json_schema: {
-        name: "vocabulary_card",
-        schema: vocabularyCardJsonSchema,
-        strict: true
-      }
-    });
+    return await requestGroqGeneratedCardWithFormat(input, signal, responseFormat, attempt);
   } catch (error) {
     const canFallback =
       (error instanceof ApiError && error.code === "GROQ_STRUCTURED_OUTPUT_UNSUPPORTED") ||
       error instanceof SyntaxError;
-    if (!canFallback) {
+    if (!canFallback || responseFormat.type === "json_object") {
       throw error;
     }
 
-    return requestGroqGeneratedCardWithFormat(input, signal, { type: "json_object" });
+    return requestGroqGeneratedCardWithFormat(input, signal, { type: "json_object" }, attempt);
   }
 }
 
 async function requestGroqGeneratedCardWithFormat(
   input: string,
   signal: AbortSignal,
-  responseFormat?: GroqResponseFormat
+  responseFormat: GroqResponseFormat,
+  attempt: number
 ) {
   const model = getGroqModel();
-  const groqSystemPrompt = `${systemPrompt}
-
-JSON schema:
-${JSON.stringify(vocabularyCardJsonSchema)}
-
-Return a single valid JSON object only. Do not use Markdown or prose outside JSON.
-Use an empty string for transcription only if pronunciation is genuinely unknown.
-The response must be JSON.
-Reply immediately with the final JSON object. Do not include analysis, thinking, or explanations.
-The "translations" field must contain natural Russian translations only.
-Bad translation examples: "намерзший" for "reluctant", "намного" for "reluctant", adverbs for adjectives, rare literal calques.
-Bad idiom translation examples: "свалиться с колеса" for "fall off the wagon".
-Good translation examples: "неохотный", "не желающий", "склонный", "существенный", "поддерживать", "сорваться", "вернуться к вредной привычке".`;
   const requestBody: Record<string, unknown> = {
     model,
     messages: [
       {
         role: "system",
-        content: groqSystemPrompt
+        content: getGroqGeneratedCardPrompt()
       },
       {
         role: "user",
@@ -527,37 +639,20 @@ Good translation examples: "неохотный", "не желающий", "ск�
       }
     ],
     temperature: 0.2,
-    max_tokens: usesQwenGroqModel(model) ? 3000 : 1200
+    max_completion_tokens: 800,
+    response_format: responseFormat
   };
 
-  if (responseFormat) {
-    requestBody.response_format = responseFormat;
+  if (supportsGroqReasoningEffortNone(model)) {
+    requestBody.reasoning_effort = "none";
   }
 
-  if (usesQwenGroqModel(model)) {
-    requestBody.reasoning_format = "hidden";
-  }
-
-  const response = await fetch(`${getGroqBaseUrl()}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getGroqApiKey()}`
-    },
-    signal,
-    body: JSON.stringify(requestBody)
+  const requestId = randomUUID();
+  const { response, payload, rateLimitDetails } = await requestGroqCompletion("generate_card", model, requestBody, signal, {
+    requestId,
+    attempt,
+    normalizedWord: normalizeWord(input)
   });
-
-  const payload = (await response.json().catch(() => null)) as
-    | {
-        choices?: Array<{
-          message?: { content?: string };
-          finish_reason?: string;
-        }>;
-        error?: { code?: string; type?: string; message?: string; failed_generation?: string };
-        failed_generation?: string;
-      }
-    | null;
 
   if (!response.ok) {
     const message = payload?.error?.message || "";
@@ -574,7 +669,21 @@ Good translation examples: "неохотный", "не желающий", "ск�
       );
     }
 
+    if (response.status === 429) {
+      console.error("Groq rate limited", {
+        provider: "groq",
+        model,
+        operation: "generate_card",
+        requestId,
+        status: response.status,
+        rateLimit: rateLimitDetails,
+        providerMessage: message.slice(0, 300)
+      });
+      throw buildGroqRateLimitError(rateLimitDetails);
+    }
+
     console.error("Groq API error", {
+      requestId,
       status: response.status,
       code: payload?.error?.code,
       type: payload?.error?.type,
@@ -591,9 +700,7 @@ Good translation examples: "неохотный", "не желающий", "ск�
         ? "Groq отклонил API-ключ или доступ к модели. Проверьте GROQ_API_KEY и GROQ_MODEL."
         : response.status === 404
           ? "Модель Groq не найдена. Проверьте GROQ_MODEL."
-          : response.status === 429
-            ? "Groq ограничил частоту запросов или квоту."
-            : response.status === 400
+          : response.status === 400
               ? "Groq отклонил запрос. Проверьте GROQ_MODEL и формат structured output."
               : "Groq вернул ошибку API. Подробности смотрите в консоли сервера.";
 
@@ -610,67 +717,46 @@ Good translation examples: "неохотный", "не желающий", "ск�
   return parseGeneratedCard(outputText);
 }
 
-async function requestGroqSentenceCheck(input: SentenceCheckInput, signal: AbortSignal) {
-  if (usesQwenGroqModel(getGroqSentenceModel())) {
-    return requestGroqSentenceCheckWithFormat(input, signal);
-  }
+async function requestGroqSentenceCheck(input: SentenceCheckInput, signal: AbortSignal, attempt: number) {
+  const model = getGroqSentenceModel();
+  const responseFormat: GroqResponseFormat = supportsGroqJsonSchema(model)
+    ? {
+        type: "json_schema",
+        json_schema: {
+          name: "sentence_check",
+          schema: sentenceCheckJsonSchema,
+          strict: true
+        }
+      }
+    : { type: "json_object" };
 
   try {
-    return await requestGroqSentenceCheckWithFormat(input, signal, {
-      type: "json_schema",
-      json_schema: {
-        name: "sentence_check",
-        schema: sentenceCheckJsonSchema,
-        strict: true
-      }
-    });
+    return await requestGroqSentenceCheckWithFormat(input, signal, responseFormat, attempt);
   } catch (error) {
     const canFallback =
       (error instanceof ApiError && error.code === "GROQ_STRUCTURED_OUTPUT_UNSUPPORTED") ||
       error instanceof SyntaxError;
-    if (!canFallback) {
+    if (!canFallback || responseFormat.type === "json_object") {
       throw error;
     }
 
-    return requestGroqSentenceCheckWithFormat(input, signal, { type: "json_object" });
+    return requestGroqSentenceCheckWithFormat(input, signal, { type: "json_object" }, attempt);
   }
 }
 
 async function requestGroqSentenceCheckWithFormat(
   input: SentenceCheckInput,
   signal: AbortSignal,
-  responseFormat?: GroqResponseFormat
+  responseFormat: GroqResponseFormat,
+  attempt: number
 ) {
   const model = getGroqSentenceModel();
-  const qwenSentencePrompt = `Evaluate one learner-written English sentence for a Russian-speaking English learner.
-Return only one valid JSON object with exactly these keys:
-{"score":1,"correct":false,"feedback":"short Russian feedback","correctedSentence":null}
-
-Rules:
-- score is an integer from 1 to 5.
-- 1 means wrong or target is missing; 2 mostly wrong; 3 partly correct; 4 correct with minor issues; 5 natural and correct.
-- correct is true only when the target word or expression is used with the intended meaning and part of speech.
-- feedback must be one friendly Russian phrase, no more than 20 words.
-- If score is 4, correctedSentence must be one corrected or more natural English sentence.
-- If score is 5, correctedSentence may be null.
-- For scores 1-3, correctedSentence may be one useful corrected English sentence or null.
-- Do not add Markdown, explanations, grammar rules, or extra keys.
-- Reply immediately with JSON.`;
-  const groqSystemPrompt = usesQwenGroqModel(model)
-    ? qwenSentencePrompt
-    : `${sentenceCheckPrompt}
-
-JSON schema:
-${JSON.stringify(sentenceCheckJsonSchema)}
-
-Return a single valid JSON object only. The response must be JSON.
-Reply immediately with the final JSON object. Do not include analysis, thinking, or explanations.`;
   const requestBody: Record<string, unknown> = {
     model,
     messages: [
       {
         role: "system",
-        content: groqSystemPrompt
+        content: getGroqSentenceCheckPrompt()
       },
       {
         role: "user",
@@ -678,37 +764,20 @@ Reply immediately with the final JSON object. Do not include analysis, thinking,
       }
     ],
     temperature: 0.1,
-    max_tokens: usesQwenGroqModel(model) ? 3200 : 350
+    max_completion_tokens: 200,
+    response_format: responseFormat
   };
 
-  if (responseFormat) {
-    requestBody.response_format = responseFormat;
+  if (supportsGroqReasoningEffortNone(model)) {
+    requestBody.reasoning_effort = "none";
   }
 
-  if (usesQwenGroqModel(model)) {
-    requestBody.reasoning_format = "hidden";
-  }
-
-  const response = await fetch(`${getGroqBaseUrl()}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getGroqApiKey()}`
-    },
-    signal,
-    body: JSON.stringify(requestBody)
+  const requestId = randomUUID();
+  const { response, payload, rateLimitDetails } = await requestGroqCompletion("sentence_check", model, requestBody, signal, {
+    requestId,
+    attempt,
+    sentenceLength: input.sentence.length
   });
-
-  const payload = (await response.json().catch(() => null)) as
-    | {
-        choices?: Array<{
-          message?: { content?: string };
-          finish_reason?: string;
-        }>;
-        error?: { code?: string; type?: string; message?: string; failed_generation?: string };
-        failed_generation?: string;
-      }
-    | null;
 
   if (!response.ok) {
     const message = payload?.error?.message || "";
@@ -725,7 +794,21 @@ Reply immediately with the final JSON object. Do not include analysis, thinking,
       );
     }
 
+    if (response.status === 429) {
+      console.error("Groq sentence check rate limited", {
+        provider: "groq",
+        model,
+        operation: "sentence_check",
+        requestId,
+        status: response.status,
+        rateLimit: rateLimitDetails,
+        providerMessage: message.slice(0, 300)
+      });
+      throw buildGroqRateLimitError(rateLimitDetails);
+    }
+
     console.error("Groq sentence check API error", {
+      requestId,
       status: response.status,
       code: payload?.error?.code,
       type: payload?.error?.type,
@@ -742,9 +825,7 @@ Reply immediately with the final JSON object. Do not include analysis, thinking,
         ? "Groq отклонил API-ключ или доступ к модели. Проверьте GROQ_API_KEY и GROQ_MODEL."
         : response.status === 404
           ? "Модель Groq не найдена. Проверьте GROQ_MODEL."
-          : response.status === 429
-            ? "Groq ограничил частоту запросов или квоту."
-            : response.status === 400
+          : response.status === 400
               ? "Groq отклонил запрос проверки предложения."
               : "Groq вернул ошибку API. Подробности смотрите в консоли сервера.";
 
@@ -1065,23 +1146,49 @@ Return a single valid JSON object only. Do not use Markdown, headings, comments,
   return parseSentenceCheck(outputText);
 }
 
-export async function generateVocabularyCard(input: string) {
+const inFlightGenerations = new Map<string, Promise<GeneratedCardInput>>();
+
+function retryDelayMs() {
+  return 500 + Math.floor(Math.random() * 500);
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isRetryableApiError(error: ApiError) {
+  if (error.status === 429) return false;
+  if (error.code === "GROQ_RATE_LIMITED" || error.code === "GROQ_QUEUE_FULL") return false;
+  if (error.code === "GROQ_QUEUE_TIMEOUT") return false;
+  return error.status >= 500;
+}
+
+export async function getCachedVocabularyCard(input: string) {
   const normalizedInput = normalizeWord(input);
   const cached = await prisma.generatedWordCache.findUnique({
     where: { normalizedWord: normalizedInput }
   });
 
   if (cached) {
+    console.info("Vocabulary generation cache hit", {
+      provider: getProvider(),
+      normalizedWord: normalizedInput,
+      cacheHit: true
+    });
     return generatedCardSchema.parse(cached.payload);
   }
 
+  return null;
+}
+
+async function generateVocabularyCardFromProvider(input: string, normalizedInput: string) {
   let lastError: unknown;
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const controller = new AbortController();
     const timeoutMs = getProviderTimeoutMs();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const card = await requestGeneratedCard(input, controller.signal);
+      const card = await requestGeneratedCard(input, controller.signal, attempt + 1);
       const normalizedWord = normalizeWord(card.normalizedWord || card.word);
       const payload = { ...card, normalizedWord };
 
@@ -1104,7 +1211,20 @@ export async function generateVocabularyCard(input: string) {
       lastError = error;
       const openAiError = toSafeOpenAiError(error);
       if (openAiError) {
+        if (isRetryableApiError(openAiError) && attempt === 0) {
+          clearTimeout(timeout);
+          await sleep(retryDelayMs());
+          continue;
+        }
         throw openAiError;
+      }
+      if (error instanceof ApiError) {
+        if (isRetryableApiError(error) && attempt === 0) {
+          clearTimeout(timeout);
+          await sleep(retryDelayMs());
+          continue;
+        }
+        throw error;
       }
       if (!isStructuredOutputError(error)) {
         console.error("Unexpected card generation error", error);
@@ -1128,6 +1248,30 @@ export async function generateVocabularyCard(input: string) {
   );
 }
 
+export async function generateVocabularyCard(input: string) {
+  const normalizedInput = normalizeWord(input);
+  const cached = await getCachedVocabularyCard(normalizedInput);
+  if (cached) return cached;
+
+  const inFlight = inFlightGenerations.get(normalizedInput);
+  if (inFlight) {
+    console.info("Vocabulary generation in-flight deduplication hit", {
+      provider: getProvider(),
+      normalizedWord: normalizedInput,
+      inFlightDeduplicationHit: true
+    });
+    return inFlight;
+  }
+
+  const promise = generateVocabularyCardFromProvider(input, normalizedInput);
+  inFlightGenerations.set(normalizedInput, promise);
+  try {
+    return await promise;
+  } finally {
+    inFlightGenerations.delete(normalizedInput);
+  }
+}
+
 export async function checkVocabularySentence(input: SentenceCheckInput) {
   let lastError: unknown;
 
@@ -1135,12 +1279,25 @@ export async function checkVocabularySentence(input: SentenceCheckInput) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), getProviderTimeoutMs());
     try {
-      return await requestSentenceCheck(input, controller.signal);
+      return await requestSentenceCheck(input, controller.signal, attempt + 1);
     } catch (error) {
       lastError = error;
       const openAiError = toSafeOpenAiError(error);
       if (openAiError) {
+        if (isRetryableApiError(openAiError) && attempt === 0) {
+          clearTimeout(timeout);
+          await sleep(retryDelayMs());
+          continue;
+        }
         throw openAiError;
+      }
+      if (error instanceof ApiError) {
+        if (isRetryableApiError(error) && attempt === 0) {
+          clearTimeout(timeout);
+          await sleep(retryDelayMs());
+          continue;
+        }
+        throw error;
       }
       if (!isStructuredOutputError(error)) {
         console.error("Unexpected sentence check error", error);

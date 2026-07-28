@@ -139,8 +139,13 @@ jobs:
           GROQ_SENTENCE_MODEL: ${{ vars.GROQ_SENTENCE_MODEL || 'llama-3.1-8b-instant' }}
           GROQ_BASE_URL: ${{ vars.GROQ_BASE_URL || 'https://api.groq.com/openai/v1' }}
           GROQ_TIMEOUT_MS: ${{ vars.GROQ_TIMEOUT_MS || '20000' }}
-          GENERATION_RATE_LIMIT_RPM: ${{ vars.GENERATION_RATE_LIMIT_RPM || '60' }}
-          GENERATION_RATE_LIMIT_RPD: ${{ vars.GENERATION_RATE_LIMIT_RPD || '1000' }}
+          GROQ_MAX_CONCURRENCY: ${{ vars.GROQ_MAX_CONCURRENCY || '1' }}
+          GROQ_QUEUE_MAX_SIZE: ${{ vars.GROQ_QUEUE_MAX_SIZE || '20' }}
+          GROQ_QUEUE_TIMEOUT_MS: ${{ vars.GROQ_QUEUE_TIMEOUT_MS || '15000' }}
+          GROQ_GLOBAL_RPM: ${{ vars.GROQ_GLOBAL_RPM || '25' }}
+          GROQ_GLOBAL_RPD: ${{ vars.GROQ_GLOBAL_RPD || '900' }}
+          GENERATION_RATE_LIMIT_RPM: ${{ vars.GENERATION_RATE_LIMIT_RPM || '5' }}
+          GENERATION_RATE_LIMIT_RPD: ${{ vars.GENERATION_RATE_LIMIT_RPD || '200' }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL || 'gpt-4o-mini' }}
           DOMAIN: ${{ vars.DOMAIN }}
@@ -170,9 +175,14 @@ jobs:
             printf 'GROQ_SENTENCE_MODEL=%s\n' "${GROQ_SENTENCE_MODEL:-llama-3.1-8b-instant}"
             printf 'GROQ_BASE_URL=%s\n' "${GROQ_BASE_URL:-https://api.groq.com/openai/v1}"
             printf 'GROQ_TIMEOUT_MS=%s\n' "${GROQ_TIMEOUT_MS:-20000}"
+            printf 'GROQ_MAX_CONCURRENCY=%s\n' "${GROQ_MAX_CONCURRENCY:-1}"
+            printf 'GROQ_QUEUE_MAX_SIZE=%s\n' "${GROQ_QUEUE_MAX_SIZE:-20}"
+            printf 'GROQ_QUEUE_TIMEOUT_MS=%s\n' "${GROQ_QUEUE_TIMEOUT_MS:-15000}"
+            printf 'GROQ_GLOBAL_RPM=%s\n' "${GROQ_GLOBAL_RPM:-25}"
+            printf 'GROQ_GLOBAL_RPD=%s\n' "${GROQ_GLOBAL_RPD:-900}"
             printf '\n'
-            printf 'GENERATION_RATE_LIMIT_RPM=%s\n' "${GENERATION_RATE_LIMIT_RPM:-60}"
-            printf 'GENERATION_RATE_LIMIT_RPD=%s\n' "${GENERATION_RATE_LIMIT_RPD:-1000}"
+            printf 'GENERATION_RATE_LIMIT_RPM=%s\n' "${GENERATION_RATE_LIMIT_RPM:-5}"
+            printf 'GENERATION_RATE_LIMIT_RPD=%s\n' "${GENERATION_RATE_LIMIT_RPD:-200}"
             printf '\n'
             printf 'OPENAI_API_KEY=%s\n' "${OPENAI_API_KEY:-}"
             printf 'OPENAI_MODEL=%s\n' "${OPENAI_MODEL:-gpt-4o-mini}"

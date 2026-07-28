@@ -65,7 +65,7 @@ Card generation is implemented in `src/lib/openai.ts`. The application supports 
 - `AI_PROVIDER="openai"` - OpenAI Responses API with strict JSON Schema structured output.
 - `AI_PROVIDER="ollama"` - local Ollama model, for example `qwen3:4b-instruct`.
 
-Generated JSON is validated again with `generatedCardSchema`. Invalid JSON triggers one retry. Groq `json_validate_failed` responses are treated as invalid generated JSON and retried.
+Generated JSON is validated again with `generatedCardSchema`. Invalid JSON triggers one retry. Groq `429` responses are not retried immediately; the UI shows the provider wait time and allows manual card entry.
 
 Relevant environment variables:
 
@@ -80,10 +80,15 @@ GROQ_MODEL="qwen/qwen3.6-27b"
 GROQ_SENTENCE_MODEL="llama-3.1-8b-instant"
 GROQ_BASE_URL="https://api.groq.com/openai/v1"
 GROQ_TIMEOUT_MS="20000"
+GROQ_MAX_CONCURRENCY="1"
+GROQ_QUEUE_MAX_SIZE="20"
+GROQ_QUEUE_TIMEOUT_MS="15000"
+GROQ_GLOBAL_RPM="25"
+GROQ_GLOBAL_RPD="900"
 
 # App-side generation throttling.
-GENERATION_RATE_LIMIT_RPM="60"
-GENERATION_RATE_LIMIT_RPD="1000"
+GENERATION_RATE_LIMIT_RPM="5"
+GENERATION_RATE_LIMIT_RPD="200"
 
 GEMINI_API_KEY=""
 GEMINI_MODEL="gemini-flash-latest"

@@ -1,4 +1,5 @@
 import { ApiError } from "@/lib/api";
+import { formatDurationRu } from "@/lib/duration";
 
 type Bucket = {
   count: number;
@@ -43,15 +44,15 @@ export function requireRateLimit(key: string, limit: number, windowMs: number) {
   if (!result.ok) {
     throw new ApiError(
       429,
-      `Слишком много запросов. Повторите через ${result.retryAfter} сек.`,
+      `Слишком много запросов. Повторите через ${formatDurationRu(result.retryAfter)}.`,
       "RATE_LIMITED",
-      { retryAfter: result.retryAfter }
+      { retryAfter: result.retryAfter, retryAfterSeconds: result.retryAfter }
     );
   }
   return result;
 }
 
-function readPositiveIntEnv(name: string, fallback: number) {
+export function readPositiveIntEnv(name: string, fallback: number) {
   const raw = process.env[name]?.trim();
   if (!raw) return fallback;
 
@@ -62,8 +63,8 @@ function readPositiveIntEnv(name: string, fallback: number) {
 
 export function getGenerationRateLimits() {
   return {
-    requestsPerMinute: readPositiveIntEnv("GENERATION_RATE_LIMIT_RPM", 60),
-    requestsPerDay: readPositiveIntEnv("GENERATION_RATE_LIMIT_RPD", 1000)
+    requestsPerMinute: readPositiveIntEnv("GENERATION_RATE_LIMIT_RPM", 5),
+    requestsPerDay: readPositiveIntEnv("GENERATION_RATE_LIMIT_RPD", 200)
   };
 }
 

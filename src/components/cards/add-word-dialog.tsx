@@ -1,9 +1,9 @@
 "use client";
 
-import { FormEvent, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus, Save, Wand2 } from "lucide-react";
+import { Loader2, Pencil, Plus, Save, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,9 +17,30 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CardEditor } from "@/components/cards/card-editor";
 import { useToast } from "@/components/providers/toast-provider";
+import { formatDurationRu } from "@/lib/duration";
 import type { GeneratedCardInput } from "@/lib/schemas";
+import { normalizeWord } from "@/lib/utils";
 
 type Duplicate = { cardId: string; word: string };
+type ApiErrorPayload = {
+  error?: string;
+  code?: string;
+  details?: {
+    provider?: string;
+    retryAfter?: number | null;
+    retryAfterSeconds?: number | null;
+    limitType?: string | null;
+  };
+  duplicate?: Duplicate;
+};
+type RateLimitState = {
+  message: string;
+  retryAfterSeconds: number | null;
+  remainingSeconds: number | null;
+  limitType?: string | null;
+};
+
+const MAX_COUNTDOWN_SECONDS = 60 * 60;
 
 export function AddWordDialog({ deckId }: { deckId: string }) {
   const router = useRouter();
@@ -31,15 +52,26 @@ export function AddWordDialog({ deckId }: { deckId: string }) {
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rateLimit, setRateLimit] = useState<RateLimitState | null>(null);
   const generationRequestRef = useRef<AbortController | null>(null);
+  const retryTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  function clearRetryTimer() {
+    if (retryTimerRef.current) {
+      clearInterval(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+  }
 
   function resetForm() {
+    clearRetryTimer();
     setWord("");
     setCard(null);
     setDuplicate(null);
     setGenerating(false);
     setSaving(false);
     setError(null);
+    setRateLimit(null);
   }
 
   function cancel() {
@@ -49,10 +81,82 @@ export function AddWordDialog({ deckId }: { deckId: string }) {
     setOpen(false);
   }
 
+  function startRateLimitCooldown(payload: ApiErrorPayload) {
+    clearRetryTimer();
+    const retryAfterSeconds =
+      payload.details?.retryAfterSeconds ?? payload.details?.retryAfter ?? null;
+    const safeRetryAfter =
+      typeof retryAfterSeconds === "number" && Number.isFinite(retryAfterSeconds)
+        ? Math.max(0, Math.ceil(retryAfterSeconds))
+        : null;
+
+    const message = payload.error || "Временный лимит генерации исчерпан.";
+    const shouldCountdown =
+      safeRetryAfter != null && safeRetryAfter > 0 && safeRetryAfter <= MAX_COUNTDOWN_SECONDS;
+
+    setRateLimit({
+      message,
+      retryAfterSeconds: safeRetryAfter,
+      remainingSeconds: shouldCountdown ? safeRetryAfter : null,
+      limitType: payload.details?.limitType
+    });
+
+    if (!shouldCountdown) return;
+
+    retryTimerRef.current = setInterval(() => {
+      setRateLimit((current) => {
+        if (!current?.remainingSeconds) {
+          clearRetryTimer();
+          return current;
+        }
+
+        const nextRemaining = current.remainingSeconds - 1;
+        if (nextRemaining <= 0) {
+          clearRetryTimer();
+          return null;
+        }
+
+        return { ...current, remainingSeconds: nextRemaining };
+      });
+    }, 1000);
+  }
+
+  function fillManually() {
+    const trimmedWord = word.trim();
+    if (!trimmedWord) return;
+
+    setError(null);
+    setRateLimit(null);
+    setDuplicate(null);
+    setCard({
+      word: trimmedWord,
+      normalizedWord: normalizeWord(trimmedWord),
+      partOfSpeech: "",
+      transcription: null,
+      translations: [""],
+      definitionEn: "",
+      examples: [
+        { en: "", ru: "" },
+        { en: "", ru: "" }
+      ]
+    });
+  }
+
+  useEffect(
+    () => () => {
+      if (retryTimerRef.current) {
+        clearInterval(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
+    },
+    []
+  );
+
   async function generate(force = false) {
-    if (generating || !word.trim()) return;
+    if (generating || !word.trim() || (rateLimit?.remainingSeconds ?? 0) > 0) return;
     setGenerating(true);
     setError(null);
+    setRateLimit(null);
     setDuplicate(null);
     const controller = new AbortController();
     generationRequestRef.current = controller;
@@ -63,18 +167,28 @@ export function AddWordDialog({ deckId }: { deckId: string }) {
         body: JSON.stringify({ deckId, input: word, force }),
         signal: controller.signal
       });
-      const payload = await response.json();
+      const payload = (await response.json().catch(() => ({}))) as ApiErrorPayload & {
+        card?: GeneratedCardInput;
+      };
       if (!response.ok) {
         if (response.status === 409 && payload.duplicate) {
           setDuplicate(payload.duplicate);
           setError(payload.error || "Это слово уже добавлено в данный набор.");
           return;
         }
+        if (payload.code === "GROQ_RATE_LIMITED") {
+          startRateLimitCooldown(payload);
+        }
         setError(payload.error || "Не удалось сгенерировать карточку.");
         return;
       }
+      setRateLimit(null);
+      if (!payload.card) {
+        setError("Сервер вернул пустую карточку.");
+        return;
+      }
       setCard(payload.card);
-      setDuplicate(payload.duplicate);
+      setDuplicate(payload.duplicate ?? null);
     } catch (caught) {
       if ((caught as Error).name !== "AbortError") {
         setError("Нет соединения с сервером.");
@@ -121,6 +235,11 @@ export function AddWordDialog({ deckId }: { deckId: string }) {
     void generate(false);
   }
 
+  const generationDisabled = generating || !word.trim() || (rateLimit?.remainingSeconds ?? 0) > 0;
+  const generationButtonText = rateLimit?.remainingSeconds
+    ? `Повторить через ${rateLimit.remainingSeconds} сек.`
+    : "Сгенерировать карточку";
+
   return (
     <Dialog
       open={open}
@@ -142,7 +261,7 @@ export function AddWordDialog({ deckId }: { deckId: string }) {
       <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>Добавить слово</DialogTitle>
-          <DialogDescription>Введите английское слово или выражение. Остальное подготовит backend через OpenAI.</DialogDescription>
+          <DialogDescription>Введите английское слово или выражение. Остальное подготовит backend через AI.</DialogDescription>
         </DialogHeader>
 
         {!card ? (
@@ -164,6 +283,22 @@ export function AddWordDialog({ deckId }: { deckId: string }) {
                 Подготавливаем карточку…
               </div>
             ) : null}
+            {rateLimit ? (
+              <div className="rounded-md border border-warning/30 bg-warning/10 p-3 text-sm text-foreground">
+                <p>{rateLimit.message}</p>
+                {rateLimit.remainingSeconds ? (
+                  <p className="mt-1 text-foreground-secondary">
+                    Повторить можно через {formatDurationRu(rateLimit.remainingSeconds)}.
+                  </p>
+                ) : rateLimit.retryAfterSeconds ? (
+                  <p className="mt-1 text-foreground-secondary">
+                    Ориентир: через {formatDurationRu(rateLimit.retryAfterSeconds)}. Можно заполнить карточку вручную.
+                  </p>
+                ) : (
+                  <p className="mt-1 text-foreground-secondary">Можно заполнить карточку вручную.</p>
+                )}
+              </div>
+            ) : null}
             {error ? (
               <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
                 {error}
@@ -183,9 +318,13 @@ export function AddWordDialog({ deckId }: { deckId: string }) {
               </div>
             ) : null}
             <div className="flex flex-wrap gap-2">
-              <Button disabled={generating || !word.trim()}>
+              <Button disabled={generationDisabled}>
                 {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-                Сгенерировать карточку
+                {generationButtonText}
+              </Button>
+              <Button type="button" variant="outline" onClick={fillManually} disabled={generating || !word.trim()}>
+                <Pencil className="h-4 w-4" />
+                Заполнить вручную
               </Button>
               <Button type="button" variant="outline" onClick={cancel}>
                 Отменить
