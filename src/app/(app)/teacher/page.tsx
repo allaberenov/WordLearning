@@ -4,10 +4,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { IncomingTeacherRequestsDialog } from "@/components/teacher/incoming-teacher-requests-dialog";
 import { InviteStudentForm } from "@/components/teacher/invite-student-form";
 import { requireUser } from "@/lib/auth";
 import { formatDateRu } from "@/lib/date";
-import { listTeacherRelationships } from "@/lib/teacher";
+import { listIncomingTeacherRequests, listTeacherRelationships } from "@/lib/teacher";
 
 function statusBadge(status: string) {
   if (status === "ACTIVE") return <Badge variant="success">подтвержден</Badge>;
@@ -18,7 +19,10 @@ function statusBadge(status: string) {
 
 export default async function TeacherPage() {
   const user = await requireUser();
-  const relationships = await listTeacherRelationships(user.id);
+  const [relationships, incomingRequests] = await Promise.all([
+    listTeacherRelationships(user.id),
+    listIncomingTeacherRequests(user.id)
+  ]);
   const activeStudents = relationships.filter((item) => item.status === "ACTIVE");
   const pendingStudents = relationships.filter((item) => item.status === "PENDING");
   const totals = {
@@ -37,6 +41,16 @@ export default async function TeacherPage() {
             Запрашивайте доступ к студентам, назначайте наборы и следите за прогрессом.
           </p>
         </div>
+        <IncomingTeacherRequestsDialog
+          requests={incomingRequests.map((request) => ({
+            id: request.id,
+            requestedAt: request.requestedAt.toISOString(),
+            teacher: {
+              email: request.teacher.email,
+              name: request.teacher.name
+            }
+          }))}
+        />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

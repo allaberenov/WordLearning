@@ -1,17 +1,16 @@
+import { ExternalLink, MessageCircle, Newspaper } from "lucide-react";
 import { SettingsForm } from "@/components/settings/settings-form";
-import { TeacherRequestActions } from "@/components/teacher/teacher-request-actions";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth";
-import { formatDateRu } from "@/lib/date";
 import { getOrCreateSettings } from "@/lib/settings";
-import { listActiveTeachers, listIncomingTeacherRequests } from "@/lib/teacher";
+import { listActiveTeachers } from "@/lib/teacher";
 
 export default async function SettingsPage() {
   const user = await requireUser();
-  const [settings, incomingRequests, activeTeachers] = await Promise.all([
+  const [settings, activeTeachers] = await Promise.all([
     getOrCreateSettings(user.id, user.timezone),
-    listIncomingTeacherRequests(user.id),
     listActiveTeachers(user.id)
   ]);
 
@@ -21,6 +20,51 @@ export default async function SettingsPage() {
         <h1 className="text-3xl font-semibold">Настройки</h1>
         <p className="mt-1 text-sm text-muted-foreground">Лимиты, FSRS, режим проверки и внешний вид.</p>
       </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Поддержка и новости</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-2">
+          <div className="rounded-md border border-border bg-surface-elevated p-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-blue-soft text-blue">
+                <MessageCircle className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="font-medium">Поддержка</div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  По поводу улучшений или ошибок можно писать в Telegram-чате.
+                </p>
+                <Button asChild variant="outline" size="sm" className="mt-3">
+                  <a href="https://t.me/dublind_wl_chat" target="_blank" rel="noreferrer">
+                    Открыть чат
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                </Button>
+              </div>
+            </div>
+          </div>
+          <div className="rounded-md border border-border bg-surface-elevated p-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                <Newspaper className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="font-medium">Новости</div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Подпишитесь на канал и следите за актуальными обновлениями приложения.
+                </p>
+                <Button asChild variant="outline" size="sm" className="mt-3">
+                  <a href="https://t.me/dublind_wl" target="_blank" rel="noreferrer">
+                    Открыть канал
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader>
           <CardTitle>Роли аккаунта</CardTitle>
@@ -38,48 +82,26 @@ export default async function SettingsPage() {
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle>Запросы преподавателей</CardTitle>
+          <CardTitle>Подключенные преподаватели</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {incomingRequests.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Новых запросов нет.</p>
+        <CardContent>
+          {activeTeachers.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Вы пока не подтвердили ни одного преподавателя. Входящие запросы доступны в разделе “Преподаватель”.
+            </p>
           ) : (
-            <div className="grid gap-3">
-              {incomingRequests.map((request) => (
-                <div
-                  key={request.id}
-                  className="flex flex-col gap-3 rounded-md border border-border bg-surface-elevated p-3 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div>
-                    <div className="font-medium">{request.teacher.name || "Преподаватель"}</div>
-                    <div className="text-sm text-muted-foreground">{request.teacher.email}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      Запрос отправлен: {formatDateRu(request.requestedAt)}
-                    </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {activeTeachers.map((link) => (
+                <div key={link.id} className="rounded-md border border-border bg-surface-elevated p-3">
+                  <div className="font-medium">{link.teacher.name || "Преподаватель"}</div>
+                  <div className="text-sm text-muted-foreground">{link.teacher.email}</div>
+                  <div className="mt-2">
+                    <Badge variant="success">доступ подтвержден</Badge>
                   </div>
-                  <TeacherRequestActions requestId={request.id} />
                 </div>
               ))}
             </div>
           )}
-          <div className="border-t border-border pt-4">
-            <div className="mb-2 text-sm font-medium">Подключенные преподаватели</div>
-            {activeTeachers.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Вы пока не подтвердили ни одного преподавателя.</p>
-            ) : (
-              <div className="grid gap-2 sm:grid-cols-2">
-                {activeTeachers.map((link) => (
-                  <div key={link.id} className="rounded-md border border-border bg-surface-elevated p-3">
-                    <div className="font-medium">{link.teacher.name || "Преподаватель"}</div>
-                    <div className="text-sm text-muted-foreground">{link.teacher.email}</div>
-                    <div className="mt-2">
-                      <Badge variant="success">доступ подтвержден</Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </CardContent>
       </Card>
       <SettingsForm

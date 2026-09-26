@@ -3,8 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { listDeckSummaries } from "@/lib/decks";
 import { getStats } from "@/lib/stats";
 import { generateVocabularyCard } from "@/lib/openai";
-import { normalizeWord } from "@/lib/utils";
+import { normalizeWord, safeInt } from "@/lib/utils";
 import type { GeneratedCardInput } from "@/lib/schemas";
+
+const TEACHER_CARDS_PAGE_SIZE = 100;
 
 export async function assertActiveTeacherAccess(teacherId: string, studentId: string) {
   const link = await prisma.teacherStudent.findUnique({
@@ -90,6 +92,12 @@ export async function listIncomingTeacherRequests(studentId: string) {
       }
     },
     orderBy: { requestedAt: "desc" }
+  });
+}
+
+export async function countIncomingTeacherRequests(studentId: string) {
+  return prisma.teacherStudent.count({
+    where: { studentId, status: "PENDING" }
   });
 }
 
@@ -179,21 +187,9 @@ export async function getTeacherStudentPageData(
   timezone: string
 ) {
   const link = await assertActiveTeacherAccess(teacherId, studentId);
-  const [stats, decks, recentCards, problemCards, assignedDecksCount] = await Promise.all([
+  const [stats, decks, assignedDecksCount] = await Promise.all([
     getStats(studentId, timezone),
     listDeckSummaries(studentId, "lastActivity", timezone),
-    prisma.card.findMany({
-      where: { deck: { userId: studentId } },
-      include: { deck: { select: { id: true, name: true, assignedByTeacherId: true } } },
-      orderBy: { createdAt: "desc" },
-      take: 25
-    }),
-    prisma.card.findMany({
-      where: { deck: { userId: studentId }, lapses: { gt: 0 } },
-      include: { deck: { select: { id: true, name: true } } },
-      orderBy: [{ lapses: "desc" }, { reps: "desc" }],
-      take: 10
-    }),
     prisma.deck.count({
       where: { userId: studentId, assignedByTeacherId: teacherId }
     })
@@ -204,9 +200,52 @@ export async function getTeacherStudentPageData(
     student: link.student,
     stats,
     decks,
-    recentCards,
-    problemCards,
     assignedDecksCount
+  };
+}
+
+export async function getTeacherStudentCardsPageData(
+  teacherId: string,
+  studentId: string,
+  searchParams: URLSearchParams
+) {
+  const link = await assertActiveTeacherAccess(teacherId, studentId);
+  const query = searchParams.get("q")?.trim() ?? "";
+  const requestedPage = safeInt(searchParams.get("page"), 1, 1, 10_000);
+  const where = {
+    deck: { userId: studentId },
+    ...(query
+      ? {
+          OR: [
+            { word: { contains: query, mode: "insensitive" as const } },
+            { normalizedWord: { contains: query.toLowerCase(), mode: "insensitive" as const } },
+            { translations: { hasSome: [query.toLowerCase(), query] } }
+          ]
+        }
+      : {})
+  };
+
+  const totalCards = await prisma.card.count({ where });
+  const totalPages = Math.max(1, Math.ceil(totalCards / TEACHER_CARDS_PAGE_SIZE));
+  const page = Math.min(requestedPage, totalPages);
+  const cards = await prisma.card.findMany({
+    where,
+    include: { deck: { select: { id: true, name: true, assignedByTeacherId: true } } },
+    orderBy: [{ createdAt: "desc" }],
+    skip: (page - 1) * TEACHER_CARDS_PAGE_SIZE,
+    take: TEACHER_CARDS_PAGE_SIZE
+  });
+
+  return {
+    student: link.student,
+    cards,
+    query,
+    pagination: {
+      page,
+      pageSize: TEACHER_CARDS_PAGE_SIZE,
+      totalItems: totalCards,
+      totalPages
+    }
   };
 }
 

@@ -31,7 +31,7 @@ export function AppShell({
   user
 }: {
   children: React.ReactNode;
-  user: { email: string; name: string | null; isAdmin?: boolean };
+  user: { email: string; name: string | null; isAdmin?: boolean; pendingTeacherRequestCount?: number };
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -58,17 +58,24 @@ export function AppShell({
             {navItems.map((item) => {
               const Icon = item.icon;
               const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const notificationCount =
+                item.href === "/teacher" ? user.pendingTeacherRequestCount ?? 0 : 0;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "focus-ring inline-flex h-10 items-center gap-2 rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground",
+                    "focus-ring relative inline-flex h-10 items-center gap-2 rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground",
                     active && "bg-blue-soft text-foreground shadow-soft"
                   )}
                 >
                   <Icon className="h-4 w-4" />
                   {item.label}
+                  {notificationCount > 0 ? (
+                    <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[11px] font-bold leading-none text-destructive-foreground shadow-soft">
+                      {notificationCount > 99 ? "99+" : notificationCount}
+                    </span>
+                  ) : null}
                 </Link>
               );
             })}
@@ -97,17 +104,26 @@ export function AppShell({
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const notificationCount =
+            item.href === "/teacher" ? user.pendingTeacherRequestCount ?? 0 : 0;
           return (
             <Link
               key={item.href}
               href={item.href}
+              aria-label={item.label}
+              title={item.label}
               className={cn(
-                "focus-ring flex h-16 flex-col items-center justify-center gap-1 text-[11px] font-medium text-muted-foreground",
+                "focus-ring relative flex h-14 items-center justify-center text-muted-foreground",
                 active && "bg-blue-soft text-primary"
               )}
             >
               <Icon className="h-5 w-5" />
-              {item.label}
+              <span className="sr-only">{item.label}</span>
+              {notificationCount > 0 ? (
+                <span className="absolute left-1/2 top-1 flex h-5 min-w-5 translate-x-1 items-center justify-center rounded-full bg-destructive px-1 text-[11px] font-bold leading-none text-destructive-foreground shadow-soft">
+                  {notificationCount > 99 ? "99+" : notificationCount}
+                </span>
+              ) : null}
             </Link>
           );
         })}

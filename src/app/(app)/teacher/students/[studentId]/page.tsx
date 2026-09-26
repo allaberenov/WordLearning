@@ -1,13 +1,11 @@
 import Link from "next/link";
-import { ArrowLeft, BarChart3, Check, GraduationCap, Layers3, RotateCcw, X } from "lucide-react";
+import { ArrowLeft, BarChart3, BookOpen, Check, GraduationCap, Layers3, RotateCcw, X } from "lucide-react";
 import { AssignmentDialog } from "@/components/teacher/assignment-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProgressBar } from "@/components/ui/progress-bar";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireUser } from "@/lib/auth";
-import { formatDateRu } from "@/lib/date";
 import { cardStateLabels } from "@/lib/labels";
 import { getTeacherStudentPageData } from "@/lib/teacher";
 
@@ -47,7 +45,15 @@ export default async function TeacherStudentPage({
           <h1 className="text-3xl font-semibold">{data.student.name || "Студент"}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{data.student.email}</p>
         </div>
-        <AssignmentDialog studentId={studentId} />
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline">
+            <Link href={`/teacher/students/${studentId}/cards`}>
+              <BookOpen className="h-4 w-4" />
+              Карточки
+            </Link>
+          </Button>
+          <AssignmentDialog studentId={studentId} />
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
@@ -138,75 +144,18 @@ export default async function TeacherStudentPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Последние карточки</CardTitle>
+          <CardTitle>Карточки и слова</CardTitle>
         </CardHeader>
-        <CardContent>
-          {data.recentCards.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Карточек пока нет.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Слово</TableHead>
-                    <TableHead>Набор</TableHead>
-                    <TableHead>Перевод</TableHead>
-                    <TableHead>Статус</TableHead>
-                    <TableHead>Создано</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.recentCards.map((card) => (
-                    <TableRow key={card.id}>
-                      <TableCell>
-                        <div className="font-medium">{card.word}</div>
-                        <div className="text-xs text-muted-foreground">{card.partOfSpeech}</div>
-                      </TableCell>
-                      <TableCell>
-                        <div>{card.deck.name}</div>
-                        {card.deck.assignedByTeacherId === user.id ? (
-                          <div className="mt-1">
-                            <Badge variant="teal">назначено вами</Badge>
-                          </div>
-                        ) : null}
-                      </TableCell>
-                      <TableCell className="max-w-64">
-                        <span className="line-clamp-2">{card.translations.join(", ")}</span>
-                      </TableCell>
-                      <TableCell>{cardStateLabels[card.state]}</TableCell>
-                      <TableCell>{formatDateRu(card.createdAt)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Сложные слова</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {data.problemCards.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Ошибок пока нет.</p>
-          ) : (
-            <div className="grid gap-3 md:grid-cols-2">
-              {data.problemCards.map((card) => (
-                <div key={card.id} className="rounded-md border border-border bg-surface-elevated p-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="font-medium">{card.word}</div>
-                      <div className="text-sm text-muted-foreground">{card.deck.name}</div>
-                    </div>
-                    <Badge variant="danger">{card.lapses} ошибок</Badge>
-                  </div>
-                  <div className="mt-2 text-sm">{card.translations.join(", ")}</div>
-                </div>
-              ))}
-            </div>
-          )}
+        <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted-foreground">
+            Полный список слов вынесен на отдельную страницу, чтобы обзор прогресса оставался компактным.
+          </p>
+          <Button asChild variant="outline">
+            <Link href={`/teacher/students/${studentId}/cards`}>
+              <BookOpen className="h-4 w-4" />
+              Открыть карточки
+            </Link>
+          </Button>
         </CardContent>
       </Card>
     </div>
