@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { ApiError } from "@/lib/api";
 import { getGenerationRateLimits, requireGenerationRateLimit } from "@/lib/rate-limit";
-import { loginSchema, registerSchema } from "@/lib/schemas";
+import {
+  loginSchema,
+  registerSchema,
+  teacherAssignmentSchema,
+  teacherInviteSchema,
+  teacherRequestResponseSchema
+} from "@/lib/schemas";
 import { classifyTypedAnswer, normalizeWord } from "@/lib/utils";
 
 function restoreEnv(name: string, value: string | undefined) {
@@ -13,6 +19,26 @@ describe("validation and text comparison", () => {
   it("validates registration and login payloads", () => {
     expect(registerSchema.safeParse({ email: "user@example.com", password: "strongpass" }).success).toBe(true);
     expect(loginSchema.safeParse({ email: "bad", password: "x" }).success).toBe(false);
+  });
+
+  it("validates teacher request and assignment payloads", () => {
+    expect(teacherInviteSchema.safeParse({ email: "student@example.com" }).success).toBe(true);
+    expect(teacherInviteSchema.safeParse({ email: "bad" }).success).toBe(false);
+    expect(teacherRequestResponseSchema.safeParse({ action: "accept" }).success).toBe(true);
+    expect(teacherRequestResponseSchema.safeParse({ action: "remove" }).success).toBe(false);
+    expect(
+      teacherAssignmentSchema.safeParse({
+        name: "Unit 4",
+        description: "",
+        words: ["abandon", "reluctant"]
+      }).success
+    ).toBe(true);
+    expect(
+      teacherAssignmentSchema.safeParse({
+        name: "Unit 4",
+        words: []
+      }).success
+    ).toBe(false);
   });
 
   it("normalizes duplicates case-insensitively and trims extra spaces", () => {

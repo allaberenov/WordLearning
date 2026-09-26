@@ -14,6 +14,8 @@ export type DeckSummary = {
   createdAt: Date;
   updatedAt: Date;
   lastStudiedAt: Date | null;
+  assignedByTeacherId?: string | null;
+  assignedAt?: Date | null;
   cardCount: number;
   dueTodayCount: number;
   progress: number;
@@ -62,6 +64,11 @@ export function DeckGrid({ decks }: { decks: DeckSummary[] }) {
                 {deck.dueTodayCount} сегодня
               </Badge>
             </div>
+            {deck.assignedByTeacherId ? (
+              <div className="mt-3">
+                <Badge variant="blue">назначено преподавателем</Badge>
+              </div>
+            ) : null}
           </CardHeader>
           <CardContent className="flex flex-1 flex-col justify-between gap-4">
             <div className="grid grid-cols-2 gap-3 text-sm">

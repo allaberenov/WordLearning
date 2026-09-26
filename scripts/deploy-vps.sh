@@ -98,8 +98,8 @@ fi
 "${COMPOSE[@]}" "${COMPOSE_FILES[@]}" pull "${PULL_SERVICES[@]}"
 
 if [[ "${COMPOSE_LEGACY}" == "true" ]]; then
-  echo "Legacy docker-compose detected; removing recreate-prone app containers before up."
-  LEGACY_RM_SERVICES=(app)
+  echo "Legacy docker-compose detected; removing recreate-prone containers before up."
+  LEGACY_RM_SERVICES=(postgres app)
   if [[ "${ENABLE_CADDY:-false}" == "true" ]]; then
     LEGACY_RM_SERVICES+=(caddy)
   fi

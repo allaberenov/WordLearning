@@ -115,6 +115,7 @@ export default async function DeckPage({
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-3xl font-semibold tracking-normal">{data.deck.name}</h1>
             {data.dueTodayCount > 0 ? <Badge variant="warning">{data.dueTodayCount} к повторению</Badge> : null}
+            {data.deck.assignedByTeacherId ? <Badge variant="blue">назначено преподавателем</Badge> : null}
           </div>
           {data.deck.description ? (
             <p className="mt-2 max-w-3xl text-sm text-muted-foreground">{data.deck.description}</p>

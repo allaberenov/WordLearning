@@ -107,5 +107,22 @@ export const settingsSchema = z.object({
   newCardOrder: z.enum(["CREATED_FIRST", "RANDOM"])
 });
 
+export const teacherInviteSchema = z.object({
+  email: emailSchema
+});
+
+export const teacherRequestResponseSchema = z.object({
+  action: z.enum(["accept", "decline"])
+});
+
+export const teacherAssignmentSchema = z.object({
+  name: z.string().trim().min(1, "Название обязательно").max(120),
+  description: z.string().trim().max(600).optional().or(z.literal("")),
+  words: z
+    .array(z.string().trim().min(1).max(160))
+    .min(1, "Добавьте хотя бы одно слово")
+    .max(20, "За раз можно назначить до 20 слов")
+});
+
 export type GeneratedCardInput = z.infer<typeof generatedCardSchema>;
 export type SentenceCheckResult = z.infer<typeof sentenceCheckResultSchema>;
