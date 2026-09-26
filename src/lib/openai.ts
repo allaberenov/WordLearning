@@ -19,6 +19,12 @@ import {
 import { normalizeWord } from "@/lib/utils";
 
 const GENERATED_CARD_CACHE_VERSION = 2;
+const DEFAULT_GROQ_MODEL = "qwen/qwen3.8-27b";
+const GROQ_LEGACY_MODEL_ALIASES: Record<string, string> = {
+  "qwen/qwen3-32b": DEFAULT_GROQ_MODEL,
+  "qwen/qwen3.6-27b": DEFAULT_GROQ_MODEL,
+  "llama-3.1-8b-instant": DEFAULT_GROQ_MODEL
+};
 
 export const vocabularyCardJsonSchema = {
   type: "object",
@@ -203,16 +209,16 @@ function getGroqBaseUrl() {
 }
 
 function getGroqModel() {
-  const model = process.env.GROQ_MODEL?.trim() || "qwen/qwen3.6-27b";
-  return model === "qwen/qwen3-32b" ? "qwen/qwen3.6-27b" : model;
+  const model = process.env.GROQ_MODEL?.trim() || DEFAULT_GROQ_MODEL;
+  return GROQ_LEGACY_MODEL_ALIASES[model] || model;
 }
 
 function getGroqSentenceModel() {
   const model = process.env.GROQ_SENTENCE_MODEL?.trim();
   if (model) {
-    return model === "qwen/qwen3-32b" ? "qwen/qwen3.6-27b" : model;
+    return GROQ_LEGACY_MODEL_ALIASES[model] || model;
   }
-  return "llama-3.1-8b-instant";
+  return DEFAULT_GROQ_MODEL;
 }
 
 function getProviderTimeoutMs() {

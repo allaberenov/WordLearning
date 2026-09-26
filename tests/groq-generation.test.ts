@@ -38,6 +38,7 @@ const originalEnv = {
   AI_PROVIDER: process.env.AI_PROVIDER,
   GROQ_API_KEY: process.env.GROQ_API_KEY,
   GROQ_MODEL: process.env.GROQ_MODEL,
+  GROQ_SENTENCE_MODEL: process.env.GROQ_SENTENCE_MODEL,
   GROQ_GLOBAL_RPM: process.env.GROQ_GLOBAL_RPM,
   GROQ_GLOBAL_RPD: process.env.GROQ_GLOBAL_RPD,
   GROQ_MAX_CONCURRENCY: process.env.GROQ_MAX_CONCURRENCY,
@@ -74,7 +75,7 @@ describe("Groq generation cache and retry behavior", () => {
     resetGroqQueueForTests();
     process.env.AI_PROVIDER = "groq";
     process.env.GROQ_API_KEY = "test-key";
-    process.env.GROQ_MODEL = "qwen/qwen3.6-27b";
+    process.env.GROQ_MODEL = "qwen/qwen3.8-27b";
     process.env.GROQ_GLOBAL_RPM = "1000";
     process.env.GROQ_GLOBAL_RPD = "1000";
     process.env.GROQ_MAX_CONCURRENCY = "1";
@@ -140,6 +141,22 @@ describe("Groq generation cache and retry behavior", () => {
     expect(requestBody.response_format).toEqual({ type: "json_object" });
   });
 
+  it("maps retired Groq model ids to the current default", async () => {
+    process.env.GROQ_MODEL = "qwen/qwen3.6-27b";
+    generatedWordCache.findUnique.mockResolvedValue(null);
+    generatedWordCache.upsert.mockResolvedValue({});
+    const fetchMock = vi.fn().mockResolvedValue(groqSuccessResponse());
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { generateVocabularyCard } = await import("@/lib/openai");
+    await expect(generateVocabularyCard("ursa")).resolves.toMatchObject({
+      normalizedWord: "abandon"
+    });
+
+    const requestBody = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
+    expect(requestBody.model).toBe("qwen/qwen3.8-27b");
+  });
+
   it("does not retry Groq 429 responses", async () => {
     generatedWordCache.findUnique.mockResolvedValue(null);
     const fetchMock = vi.fn().mockResolvedValue(
@@ -174,8 +191,8 @@ describe("Groq generation cache and retry behavior", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("uses compact JSON object mode for Llama sentence checks", async () => {
-    process.env.GROQ_SENTENCE_MODEL = "llama-3.1-8b-instant";
+  it("uses compact JSON object mode for Qwen sentence checks", async () => {
+    process.env.GROQ_SENTENCE_MODEL = "qwen/qwen3.8-27b";
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -215,8 +232,10 @@ describe("Groq generation cache and retry behavior", () => {
     ).resolves.toMatchObject({ score: 4, correct: true });
 
     const requestBody = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
+    expect(requestBody.model).toBe("qwen/qwen3.8-27b");
     expect(requestBody.max_completion_tokens).toBe(200);
     expect(requestBody.max_tokens).toBeUndefined();
+    expect(requestBody.reasoning_effort).toBe("none");
     expect(requestBody.reasoning_format).toBeUndefined();
     expect(requestBody.response_format).toEqual({ type: "json_object" });
   });
