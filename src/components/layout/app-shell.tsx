@@ -72,7 +72,7 @@ export function AppShell({
                   <Icon className="h-4 w-4" />
                   {item.label}
                   {notificationCount > 0 ? (
-                    <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[11px] font-bold leading-none text-destructive-foreground shadow-soft">
+                    <span className="absolute right-1 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-none text-destructive-foreground shadow-soft">
                       {notificationCount > 99 ? "99+" : notificationCount}
                     </span>
                   ) : null}
@@ -120,7 +120,7 @@ export function AppShell({
               <Icon className="h-5 w-5" />
               <span className="sr-only">{item.label}</span>
               {notificationCount > 0 ? (
-                <span className="absolute left-1/2 top-1 flex h-5 min-w-5 translate-x-1 items-center justify-center rounded-full bg-destructive px-1 text-[11px] font-bold leading-none text-destructive-foreground shadow-soft">
+                <span className="absolute left-1/2 top-1 flex h-4 min-w-4 translate-x-0 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-none text-destructive-foreground shadow-soft">
                   {notificationCount > 99 ? "99+" : notificationCount}
                 </span>
               ) : null}

@@ -66,6 +66,8 @@ export async function listDeckSummaries(userId: string, sort: DeckSort, timezone
       ...deck,
       cardCount: total,
       dueTodayCount: dueMap.get(deck.id) ?? 0,
+      learnedCount: mature,
+      remainingCount: Math.max(0, total - mature),
       progress: total > 0 ? Math.round((mature / total) * 100) : 0
     };
   });

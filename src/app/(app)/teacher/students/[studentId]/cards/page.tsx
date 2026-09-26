@@ -50,6 +50,9 @@ export default async function TeacherStudentCardsPage({
     data.pagination.totalItems,
     data.pagination.page * data.pagination.pageSize
   );
+  const clearSearchHref = data.selectedDeck
+    ? `/teacher/students/${studentId}/cards?deckId=${data.selectedDeck.id}`
+    : `/teacher/students/${studentId}/cards`;
 
   return (
     <div className="space-y-6">
@@ -61,11 +64,17 @@ export default async function TeacherStudentCardsPage({
               К обзору
             </Link>
           </Button>
-          <h1 className="text-3xl font-semibold">Карточки студента</h1>
+          <h1 className="text-3xl font-semibold">{data.selectedDeck ? "Слова набора" : "Карточки студента"}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {data.student.name || data.student.email} · {data.pagination.totalItems} карточек
+            {data.student.name || data.student.email}
+            {data.selectedDeck ? ` · ${data.selectedDeck.name}` : ""} · {data.pagination.totalItems} карточек
           </p>
         </div>
+        {data.selectedDeck ? (
+          <Button asChild variant="outline">
+            <Link href={`/teacher/students/${studentId}/cards`}>Все карточки</Link>
+          </Button>
+        ) : null}
       </div>
 
       <Card>
@@ -74,6 +83,7 @@ export default async function TeacherStudentCardsPage({
         </CardHeader>
         <CardContent>
           <form className="flex flex-col gap-2 sm:flex-row">
+            {data.selectedDeck ? <input type="hidden" name="deckId" value={data.selectedDeck.id} /> : null}
             <Input name="q" defaultValue={data.query} placeholder="Слово или перевод" />
             <Button>
               <Search className="h-4 w-4" />
@@ -81,7 +91,7 @@ export default async function TeacherStudentCardsPage({
             </Button>
             {data.query ? (
               <Button asChild variant="outline">
-                <Link href={`/teacher/students/${studentId}/cards`}>Сбросить</Link>
+                <Link href={clearSearchHref}>Сбросить</Link>
               </Button>
             ) : null}
           </form>

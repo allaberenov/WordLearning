@@ -1,7 +1,6 @@
 import { ApiError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { listDeckSummaries } from "@/lib/decks";
-import { getStats } from "@/lib/stats";
 import { generateVocabularyCard } from "@/lib/openai";
 import { normalizeWord, safeInt } from "@/lib/utils";
 import type { GeneratedCardInput } from "@/lib/schemas";
@@ -187,20 +186,12 @@ export async function getTeacherStudentPageData(
   timezone: string
 ) {
   const link = await assertActiveTeacherAccess(teacherId, studentId);
-  const [stats, decks, assignedDecksCount] = await Promise.all([
-    getStats(studentId, timezone),
-    listDeckSummaries(studentId, "lastActivity", timezone),
-    prisma.deck.count({
-      where: { userId: studentId, assignedByTeacherId: teacherId }
-    })
-  ]);
+  const decks = await listDeckSummaries(studentId, "lastActivity", timezone);
 
   return {
     link,
     student: link.student,
-    stats,
-    decks,
-    assignedDecksCount
+    decks
   };
 }
 
@@ -211,9 +202,22 @@ export async function getTeacherStudentCardsPageData(
 ) {
   const link = await assertActiveTeacherAccess(teacherId, studentId);
   const query = searchParams.get("q")?.trim() ?? "";
+  const deckId = searchParams.get("deckId")?.trim() || null;
   const requestedPage = safeInt(searchParams.get("page"), 1, 1, 10_000);
+  const selectedDeck = deckId
+    ? await prisma.deck.findFirst({
+        where: { id: deckId, userId: studentId },
+        select: { id: true, name: true }
+      })
+    : null;
+
+  if (deckId && !selectedDeck) {
+    throw new ApiError(404, "Набор студента не найден.", "STUDENT_DECK_NOT_FOUND");
+  }
+
   const where = {
     deck: { userId: studentId },
+    ...(deckId ? { deckId } : {}),
     ...(query
       ? {
           OR: [
@@ -238,6 +242,7 @@ export async function getTeacherStudentCardsPageData(
 
   return {
     student: link.student,
+    selectedDeck,
     cards,
     query,
     pagination: {

@@ -37,7 +37,7 @@ export function IncomingTeacherRequestsDialog({
           <Bell className="h-4 w-4" />
           Запросы
           {count > 0 ? (
-            <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[11px] font-bold leading-none text-destructive-foreground shadow-soft">
+            <span className="absolute -left-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-none text-destructive-foreground shadow-soft">
               {count > 99 ? "99+" : count}
             </span>
           ) : null}

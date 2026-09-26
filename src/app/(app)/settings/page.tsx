@@ -86,9 +86,7 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent>
           {activeTeachers.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Вы пока не подтвердили ни одного преподавателя. Входящие запросы доступны в разделе “Преподаватель”.
-            </p>
+            <p className="text-sm text-muted-foreground">Пока преподавателей нет.</p>
           ) : (
             <div className="grid gap-2 sm:grid-cols-2">
               {activeTeachers.map((link) => (
